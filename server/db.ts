@@ -66,6 +66,14 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export async function getPersonalOwnerUser() {
+  if (!ENV.ownerOpenId) return undefined;
+  const existing = await getUserByOpenId(ENV.ownerOpenId);
+  if (existing) return existing;
+  await upsertUser({ openId: ENV.ownerOpenId, name: ENV.ownerName, loginMethod: "acesso_pessoal", role: "admin" });
+  return getUserByOpenId(ENV.ownerOpenId);
+}
+
 export async function listFieldDefinitions(userId: number) {
   const db = await requireDb();
   return db.select().from(fieldDefinitions).where(eq(fieldDefinitions.userId, userId)).orderBy(fieldDefinitions.columnOrder, fieldDefinitions.id);

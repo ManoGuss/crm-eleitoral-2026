@@ -51,3 +51,6 @@
 - [x] Configurar a Vercel para publicar a interface estática com fallback de SPA e preservar `/api/*` em função serverless.
 - [x] Validar a configuração de saída estática, fallback de SPA e função serverless da Vercel.
 - [x] Sincronizar a correção validada com o repositório GitHub conectado.
+- [x] Permitir acesso direto ao espaço pessoal do proprietário sem tela de login.
+- [x] Ajustar as rotas protegidas para resolver o proprietário quando não houver sessão.
+- [x] Validar o acesso sem login e documentar a implicação de acesso público.

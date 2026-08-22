@@ -43,5 +43,7 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Evidência visual — celular | A captura de `/base-eleitoral` em 375×812 confirmou os mesmos badges abaixo de cargo e partido nos cartões, sem corte horizontal e com contraste legível. |
 | Artefato para Vercel | O build local confirmou `dist/public/index.html` como saída da interface; `vercel.json` aponta explicitamente para essa pasta e aplica o fallback da SPA apenas depois da resolução de arquivos e funções. |
 | Runtime da Vercel | A entrada `api/[...path].ts` reutiliza a aplicação Express para manter OAuth, tRPC, armazenamento e endpoints programados fora do diretório estático. |
+| Acesso pessoal direto | Sem cookie ou sessão, o contexto do servidor resolve o registro do proprietário configurado; uma chamada anônima a `auth.me` retornou HTTP 200 e as rotas `/` e `/acesso` renderizaram diretamente o painel. |
+| Implicação de privacidade | O CRM passa a ser um espaço pessoal único sem barreira de login. Quem possuir o endereço publicado poderá ler e alterar o conteúdo; mantenha a URL fora de divulgação e reative autenticação se houver qualquer compartilhamento. |
 
-A validação de tipos, 30 testes automatizados — incluindo teste de interface do badge — e o build de produção foram executados com êxito após esta atualização.
+A validação de tipos, 31 testes automatizados — incluindo o fallback sem sessão — e o build de produção foram executados com êxito após esta atualização.
