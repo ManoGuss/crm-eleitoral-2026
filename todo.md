@@ -54,3 +54,7 @@
 - [x] Permitir acesso direto ao espaço pessoal do proprietário sem tela de login.
 - [x] Ajustar as rotas protegidas para resolver o proprietário quando não houver sessão.
 - [x] Validar o acesso sem login e documentar a implicação de acesso público.
+- [x] Investigar a tela azul vazia no deploy Vercel do CRM.
+- [x] Ajustar o carregamento inicial para não depender de uma API indisponível na Vercel.
+- [x] Validar o artefato estático e o proxy de API que elimina a tela azul vazia.
+- [x] Sincronizar a correção da Vercel ao GitHub e confirmar o novo deploy.

@@ -45,5 +45,6 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Runtime da Vercel | A entrada `api/[...path].ts` reutiliza a aplicação Express para manter OAuth, tRPC, armazenamento e endpoints programados fora do diretório estático. |
 | Acesso pessoal direto | Sem cookie ou sessão, o contexto do servidor resolve o registro do proprietário configurado; uma chamada anônima a `auth.me` retornou HTTP 200 e as rotas `/` e `/acesso` renderizaram diretamente o painel. |
 | Implicação de privacidade | O CRM passa a ser um espaço pessoal único sem barreira de login. Quem possuir o endereço publicado poderá ler e alterar o conteúdo; mantenha a URL fora de divulgação e reative autenticação se houver qualquer compartilhamento. |
+| Correção da Vercel | A configuração da Vercel serve apenas `dist/public`, encaminha `/api/*` para a API publicada do CRM (HTTP 200 validado) e preserva o fallback de SPA. A função serverless local foi removida para evitar a indisponibilidade que deixava a interface em tela azul. |
 
-A validação de tipos, 31 testes automatizados — incluindo o fallback sem sessão — e o build de produção foram executados com êxito após esta atualização.
+A validação de tipos, 32 testes automatizados — incluindo a configuração de proxy da Vercel — e o build de produção foram executados com êxito após esta atualização.
