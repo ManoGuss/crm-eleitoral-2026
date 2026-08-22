@@ -62,3 +62,7 @@
 - [x] Remover dependências de API no carregamento inicial do deploy estático.
 - [x] Remover scripts e build de runtime exclusivo da hospedagem integrada do artefato Vercel.
 - [x] Validar o artefato estático limpo e sincronizar a correção integral ao GitHub.
+- [x] Diagnosticar respostas da API para Base eleitoral e Coleta eleitoral no deploy Vercel.
+- [x] Exibir dados, falhas e estados vazios eleitorais sem carregamento infinito.
+- [x] Cobrir a seleção do espaço pessoal quando a API publicada não expuser o identificador do proprietário.
+- [x] Validar as abas eleitorais e sincronizar a correção ao GitHub.

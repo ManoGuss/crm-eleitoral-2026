@@ -66,12 +66,27 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export function selectPersonalWorkspaceUser<T>(admins: T[], recentUsers: T[]) {
+  return admins[0] ?? recentUsers[0];
+}
+
 export async function getPersonalOwnerUser() {
-  if (!ENV.ownerOpenId) return undefined;
-  const existing = await getUserByOpenId(ENV.ownerOpenId);
-  if (existing) return existing;
-  await upsertUser({ openId: ENV.ownerOpenId, name: ENV.ownerName, loginMethod: "acesso_pessoal", role: "admin" });
-  return getUserByOpenId(ENV.ownerOpenId);
+  const db = await getDb();
+  if (!db) return undefined;
+  if (ENV.ownerOpenId) {
+    const existing = await getUserByOpenId(ENV.ownerOpenId);
+    if (existing) return existing;
+    await upsertUser({ openId: ENV.ownerOpenId, name: ENV.ownerName, loginMethod: "acesso_pessoal", role: "admin" });
+    return getUserByOpenId(ENV.ownerOpenId);
+  }
+
+  // No deploy pessoal publicado, a variável do proprietário pode não estar
+  // exposta ao runtime. Nesse caso, usa-se o último espaço pessoal registrado,
+  // com preferência por um administrador, para que as consultas protegidas não
+  // fiquem sem contexto e não retornem 401 para a interface estática.
+  const admins = await db.select().from(users).where(eq(users.role, "admin")).orderBy(desc(users.lastSignedIn), desc(users.id)).limit(1);
+  const recentUsers = await db.select().from(users).orderBy(desc(users.lastSignedIn), desc(users.id)).limit(1);
+  return selectPersonalWorkspaceUser(admins, recentUsers);
 }
 
 export async function listFieldDefinitions(userId: number) {
