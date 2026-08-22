@@ -1,0 +1,1 @@
+ALTER TABLE `electionCollections` ADD `instagramCheckedCount` int DEFAULT 0 NOT NULL;

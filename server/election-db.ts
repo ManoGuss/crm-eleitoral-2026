@@ -1,0 +1,98 @@
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { electionCandidates, electionCollections } from "../drizzle/schema";
+import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
+import { getDb } from "./db";
+
+async function requireDb() {
+  const db = await getDb();
+  if (!db) throw new Error("Banco de dados indisponível no momento.");
+  return db;
+}
+
+export async function listElectionCollectionsForUser(userId: number) {
+  const db = await requireDb();
+  return db.select().from(electionCollections).where(eq(electionCollections.userId, userId)).orderBy(desc(electionCollections.createdAt));
+}
+
+export async function getElectionCollectionForUser(userId: number, id: number) {
+  const db = await requireDb();
+  const collection = (await db.select().from(electionCollections).where(and(eq(electionCollections.id, id), eq(electionCollections.userId, userId))).limit(1))[0];
+  if (!collection) return null;
+  const [byCargo, byInstagram, byState] = await Promise.all([
+    db.select({ cargo: electionCandidates.cargo, total: count() }).from(electionCandidates).where(and(eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, id))).groupBy(electionCandidates.cargo),
+    db.select({ verification: electionCandidates.instagramVerification, total: count() }).from(electionCandidates).where(and(eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, id))).groupBy(electionCandidates.instagramVerification),
+    db.select({ state: electionCandidates.state, total: count() }).from(electionCandidates).where(and(eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, id))).groupBy(electionCandidates.state).orderBy(electionCandidates.state),
+  ]);
+  return { collection, byCargo, byInstagram, byState };
+}
+
+export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; query?: string }) {
+  const db = await requireDb();
+  const conditions = [eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, input.collectionId)];
+  if (input.state) conditions.push(eq(electionCandidates.state, input.state));
+  if (input.cargo) conditions.push(eq(electionCandidates.cargo, input.cargo));
+  if (input.party) conditions.push(eq(electionCandidates.party, input.party));
+  if (input.city) conditions.push(eq(electionCandidates.city, input.city));
+  if (input.instagramVerification) conditions.push(eq(electionCandidates.instagramVerification, input.instagramVerification as typeof electionCandidates.instagramVerification.enumValues[number]));
+  if (input.query?.trim()) {
+    const term = `%${input.query.trim()}%`;
+    conditions.push(sql`(${electionCandidates.candidateName} like ${term} OR ${electionCandidates.ballotName} like ${term} OR ${electionCandidates.primaryInstagram} like ${term})`);
+  }
+  const where = and(...conditions);
+  const offset = (input.page - 1) * input.pageSize;
+  const [items, totalResult] = await Promise.all([
+    db.select().from(electionCandidates).where(where).orderBy(electionCandidates.state, electionCandidates.cargo, electionCandidates.candidateName).limit(input.pageSize).offset(offset),
+    db.select({ total: count() }).from(electionCandidates).where(where),
+  ]);
+  return { items, total: totalResult[0]?.total ?? 0 };
+}
+
+export async function collectOfficial2026ForUser(userId: number) {
+  const db = await requireDb();
+  const created = await db.insert(electionCollections).values({
+    userId,
+    label: "Coleta oficial TSE — Eleições Gerais 2026",
+    sourceUrl: TSE_CANDIDATES_URL,
+    sourceStatus: "disponivel",
+    processStatus: "em_processamento",
+    dataCutoffAt: new Date(),
+    summary: { candidatesUrl: TSE_CANDIDATES_URL, socialNetworksUrl: TSE_SOCIAL_NETWORKS_URL, scope: ["Governador", "Vice-governador", "Senador", "1º Suplente", "2º Suplente", "Deputado Federal", "Deputado Estadual"] },
+  });
+  const collectionId = Number(created[0].insertId);
+  try {
+    const { candidates, officialTotals, sourceUrl, sourceMode, notes } = await loadOfficial2026Candidates();
+    for (let start = 0; start < candidates.length; start += 250) {
+      const batch = candidates.slice(start, start + 250);
+      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidate, collectionId, userId })));
+    }
+    const verifiedInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Verificado").length;
+    const probableInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Provável — requer revisão").length;
+    const notFoundInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Não localizado").length;
+    const coveredUfs = Array.from(new Set(candidates.map(candidate => candidate.state))).sort();
+    const coverageIssue = coveredUfs.length < 26;
+    await db.update(electionCollections).set({
+      sourceUrl,
+      sourceStatus: "processado",
+      processStatus: coverageIssue ? "incompleta" : "concluida",
+      processedAt: new Date(),
+      totalCandidates: candidates.length,
+      instagramCheckedCount: 0,
+      instagramPendingCount: candidates.length,
+      verifiedInstagramCount,
+      probableInstagramCount,
+      notFoundInstagramCount: 0,
+      officialTotals,
+      summary: { candidatesUrl: TSE_CANDIDATES_URL, socialNetworksUrl: TSE_SOCIAL_NETWORKS_URL, sourceMode, sourceNotes: notes, coveredUfs, scope: ["Governador", "Vice-governador", "Senador", "1º Suplente", "2º Suplente", "Deputado Federal", "Deputado Estadual"] },
+      errorReport: coverageIssue ? [{ stage: "conferencia_cobertura_uf", reason: `A fonte retornou ${coveredUfs.length} UF(s): ${coveredUfs.join(", ")}. A coleta não foi marcada como completa.` }] : null,
+    }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Falha desconhecida ao acessar a fonte oficial.";
+    await db.update(electionCollections).set({
+      sourceStatus: "indisponivel",
+      processStatus: "incompleta",
+      processedAt: new Date(),
+      errorReport: [{ stage: "download_fonte_oficial", reason }],
+    }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
+  }
+  return getElectionCollectionForUser(userId, collectionId);
+}

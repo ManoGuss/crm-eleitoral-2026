@@ -20,6 +20,7 @@ import {
   findExistingLeadsByDedupeKeys,
   getDashboardForUser,
   getDb,
+  getLeadElectionFilterOptions,
   getImportForUser,
   getLeadDetail,
   getLeadsBySourceImport,
@@ -29,6 +30,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
+import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -106,9 +108,14 @@ export const crmRouter = router({
       pageSize: z.number().int().min(10).max(100).default(25),
       status: statusSchema.optional(),
       query: z.string().max(200).optional(),
+      cargo: z.string().max(255).optional(),
+      party: z.string().max(255).optional(),
+      state: z.string().max(100).optional(),
+      city: z.string().max(255).optional(),
       sourceImportId: z.number().int().positive().optional(),
       followUp: z.enum(["overdue", "upcoming"]).optional(),
     })).query(({ ctx, input }) => listLeadsForUser(ctx.user.id, input)),
+    electionFilterOptions: protectedProcedure.query(({ ctx }) => getLeadElectionFilterOptions(ctx.user.id)),
     get: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const detail = await getLeadDetail(ctx.user.id, input.id);
       if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Lead não encontrado." });
@@ -338,5 +345,25 @@ export const crmRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A importação foi interrompida. Nenhum resultado parcial será apresentado como concluído." });
       }
     }),
+  }),
+  electionResearch: router({
+    listCollections: protectedProcedure.query(({ ctx }) => listElectionCollectionsForUser(ctx.user.id)),
+    getCollection: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const collection = await getElectionCollectionForUser(ctx.user.id, input.id);
+      if (!collection) throw new TRPCError({ code: "NOT_FOUND", message: "Coleta não encontrada." });
+      return collection;
+    }),
+    runOfficialCollection: protectedProcedure.mutation(({ ctx }) => collectOfficial2026ForUser(ctx.user.id)),
+    listCandidates: protectedProcedure.input(z.object({
+      collectionId: z.number().int().positive(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(10).max(100).default(25),
+      state: z.string().max(2).optional(),
+      cargo: z.string().max(120).optional(),
+      party: z.string().max(120).optional(),
+      city: z.string().max(255).optional(),
+      instagramVerification: z.enum(["Verificado", "Provável — requer revisão", "Não localizado"]).optional(),
+      query: z.string().max(200).optional(),
+    })).query(({ ctx, input }) => listElectionCandidatesForUser(ctx.user.id, input)),
   }),
 });

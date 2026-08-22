@@ -90,6 +90,10 @@ type LeadFilters = {
   pageSize: number;
   status?: string;
   query?: string;
+  cargo?: string;
+  party?: string;
+  state?: string;
+  city?: string;
   sourceImportId?: number;
   followUp?: "overdue" | "upcoming";
 };
@@ -105,6 +109,18 @@ export async function listLeadsForUser(userId: number, filters: LeadFilters) {
     const term = `%${filters.query.trim()}%`;
     conditions.push(sql`(cast(${leads.customFields} as char) like ${term} OR ${leads.description} like ${term})`);
   }
+  const electionPaths = {
+    cargo: ["$.[\"Cargo\"]", "$.[\"DS_CARGO\"]"],
+    party: ["$.[\"Partido\"]", "$.[\"Partido/Federação\"]", "$.[\"SG_PARTIDO\"]", "$.[\"NM_PARTIDO\"]", "$.[\"Federação\"]", "$.[\"NM_FEDERACAO\"]"],
+    state: ["$.[\"Estado\"]", "$.[\"UF\"]", "$.[\"SG_UF\"]", "$.[\"UF da eleição\"]", "$.[\"SG_UE\"]"],
+    city: ["$.[\"Cidade\"]", "$.[\"Município\"]", "$.[\"NM_MUNICIPIO\"]", "$.[\"NM_UE\"]"],
+  } as const;
+  for (const [field, value] of Object.entries({ cargo: filters.cargo, party: filters.party, state: filters.state, city: filters.city }) as Array<[keyof typeof electionPaths, string | undefined]>) {
+    if (value?.trim()) {
+      const paths = electionPaths[field].map(path => sql`${path}`);
+      conditions.push(sql`json_search(${leads.customFields}, 'one', ${value.trim()}, NULL, ${sql.join(paths, sql`, `)}) is not null`);
+    }
+  }
   const where = and(...conditions);
   const offset = (filters.page - 1) * filters.pageSize;
   const [items, totalResult] = await Promise.all([
@@ -112,6 +128,24 @@ export async function listLeadsForUser(userId: number, filters: LeadFilters) {
     db.select({ total: count() }).from(leads).where(where),
   ]);
   return { items, total: totalResult[0]?.total ?? 0 };
+}
+
+export async function getLeadElectionFilterOptions(userId: number) {
+  const db = await requireDb();
+  const rows = await db.select({ customFields: leads.customFields }).from(leads).where(eq(leads.userId, userId));
+  const values = { cargo: new Set<string>(), party: new Set<string>(), state: new Set<string>(), city: new Set<string>() };
+  const keyForHeader = (header: string) => header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  rows.forEach(row => Object.entries(row.customFields).forEach(([header, value]) => {
+    const key = keyForHeader(header);
+    const cleaned = value.trim();
+    if (!cleaned) return;
+    if (key.includes("cargo")) values.cargo.add(cleaned);
+    else if (key.includes("partido") || key.includes("federacao")) values.party.add(cleaned);
+    else if (key === "estado" || key === "uf" || key.includes("ufeleicao")) values.state.add(cleaned);
+    else if (key.includes("cidade") || key.includes("municipio")) values.city.add(cleaned);
+  }));
+  const sort = (items: Set<string>) => Array.from(items).sort((a, b) => a.localeCompare(b, "pt-BR")).slice(0, 1000);
+  return { cargo: sort(values.cargo), party: sort(values.party), state: sort(values.state), city: sort(values.city) };
 }
 
 export async function getLeadDetail(userId: number, leadId: number) {

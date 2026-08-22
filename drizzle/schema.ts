@@ -180,8 +180,71 @@ export const activities = mysqlTable(
   table => [index("activities_user_lead_created_idx").on(table.userId, table.leadId, table.createdAt)]
 );
 
+export const electionCollections = mysqlTable(
+  "electionCollections",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 255 }).notNull(),
+    sourceUrl: varchar("sourceUrl", { length: 1200 }).notNull(),
+    sourceStatus: mysqlEnum("sourceStatus", ["disponivel", "indisponivel", "processado", "falhou"]).default("disponivel").notNull(),
+    processStatus: mysqlEnum("processStatus", ["pendente", "em_processamento", "concluida", "incompleta", "falhou"]).default("pendente").notNull(),
+    dataCutoffAt: timestamp("dataCutoffAt"),
+    processedAt: timestamp("processedAt"),
+    totalCandidates: int("totalCandidates").default(0).notNull(),
+    instagramCheckedCount: int("instagramCheckedCount").default(0).notNull(),
+    instagramPendingCount: int("instagramPendingCount").default(0).notNull(),
+    verifiedInstagramCount: int("verifiedInstagramCount").default(0).notNull(),
+    probableInstagramCount: int("probableInstagramCount").default(0).notNull(),
+    notFoundInstagramCount: int("notFoundInstagramCount").default(0).notNull(),
+    officialTotals: json("officialTotals").$type<Record<string, number>>(),
+    summary: json("summary").$type<Record<string, unknown>>(),
+    errorReport: json("errorReport").$type<Array<{ stage: string; reason: string }>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("election_collections_user_created_idx").on(table.userId, table.createdAt)]
+);
+
+export const electionCandidates = mysqlTable(
+  "electionCandidates",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    collectionId: int("collectionId").notNull().references(() => electionCollections.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    officialCandidateId: varchar("officialCandidateId", { length: 128 }).notNull(),
+    state: varchar("state", { length: 2 }).notNull(),
+    cargo: varchar("cargo", { length: 120 }).notNull(),
+    candidateName: varchar("candidateName", { length: 500 }).notNull(),
+    ballotName: varchar("ballotName", { length: 500 }),
+    candidateNumber: varchar("candidateNumber", { length: 32 }),
+    party: varchar("party", { length: 120 }),
+    federation: varchar("federation", { length: 255 }),
+    candidateStatus: varchar("candidateStatus", { length: 180 }),
+    ballotAvailability: mysqlEnum("ballotAvailability", ["Sim", "Não", "Em análise"]).default("Em análise").notNull(),
+    city: varchar("city", { length: 255 }),
+    declaredProfiles: json("declaredProfiles").$type<string[]>(),
+    primaryInstagram: varchar("primaryInstagram", { length: 1200 }),
+    secondaryInstagrams: json("secondaryInstagrams").$type<string[]>(),
+    instagramVerification: mysqlEnum("instagramVerification", ["Verificado", "Provável — requer revisão", "Não localizado"]).default("Não localizado").notNull(),
+    verificationSignals: json("verificationSignals").$type<Array<{ signal: string; source: string; url?: string }>>(),
+    sourceRecord: json("sourceRecord").$type<Record<string, string>>().notNull(),
+    lastVerifiedAt: timestamp("lastVerifiedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("election_candidate_collection_official_unique").on(table.collectionId, table.officialCandidateId),
+    index("election_candidates_user_filter_idx").on(table.userId, table.state, table.cargo),
+    index("election_candidates_user_party_idx").on(table.userId, table.party),
+    index("election_candidates_user_instagram_idx").on(table.userId, table.instagramVerification),
+  ]
+);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type ImportRecord = typeof imports.$inferSelect;
+export type ElectionCollection = typeof electionCollections.$inferSelect;
+export type ElectionCandidate = typeof electionCandidates.$inferSelect;

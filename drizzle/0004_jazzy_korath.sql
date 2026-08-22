@@ -1,0 +1,1 @@
+ALTER TABLE `electionCollections` ADD `instagramPendingCount` int DEFAULT 0 NOT NULL;

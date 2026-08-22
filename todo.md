@@ -15,3 +15,10 @@
 - [x] Documentar configuração, modelo de dados, uso e limitações da solução.
 - [x] Criar rotas internas reais do CRM e confirmar o redirecionamento de pessoas não autenticadas para o acesso seguro.
 - [x] Implementar uma tela de acesso visível conectada à autenticação já provida pela plataforma.
+- [x] Implementar filtros eleitorais específicos por cargo, partido, estado e cidade na busca de leads.
+- [x] Levantar fontes oficiais atuais do TSE, DivulgaCandContas e TREs para candidaturas estaduais das Eleições Gerais de 2026.
+- [x] Modelar a base auditável de candidaturas, evidências públicas, status de validação de Instagram e data de verificação.
+- [x] Implementar uma coleta reproduzível de candidaturas estaduais, sem incluir Presidência e Vice-Presidência.
+- [ ] Validar perfis públicos de Instagram por evidências múltiplas, sem associação por mera semelhança de nome. Limitação atual: 528 consultas oficiais individuais concluídas; a verificação integral foi interrompida para evitar carga excessiva e permanece pendente.
+- [x] Consolidar totais por estado e cargo, cobertura de Instagram e relatório de fontes e limitações técnicas.
+- [x] Disponibilizar a base eleitoral nacional em uma consulta paginada e responsiva, com filtros por UF, cargo e classificação de Instagram.
