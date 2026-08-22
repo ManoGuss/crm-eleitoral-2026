@@ -38,5 +38,8 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Favoritos eleitorais | A Base eleitoral oferece ação de favoritar e filtro de favoritos, todos isolados pela conta autenticada e sem alteração dos registros oficiais de candidatura. |
 | Acompanhamento de favoritos | Candidaturas favoritada recebem marcador comercial e seletor de status próprios, permitindo acompanhar a prospecção sem criar dados fictícios no cadastro oficial. |
 | Conversa e follow-up | Favoritos permitem registrar a conversa com horário e agendar o próximo follow-up; a remoção de um favorito que já possui acompanhamento pede confirmação, pois elimina somente os dados privados desse usuário. |
+| Situações oficiais | A Base eleitoral voltou a apresentar badges de alto contraste: verde para deferidas, âmbar para pendentes ou aguardando julgamento, vermelho para renúncias e indeferimentos, e cinza para situações sem classificação publicada. |
+| Evidência visual — desktop | A captura de `/base-eleitoral` em 1280×720 exibiu simultaneamente “Renúncia” em vermelho e “Aguardando julgamento” em âmbar, ambos legíveis na coluna Situação. |
+| Evidência visual — celular | A captura de `/base-eleitoral` em 375×812 confirmou os mesmos badges abaixo de cargo e partido nos cartões, sem corte horizontal e com contraste legível. |
 
-A validação de tipos, 26 testes automatizados e o build de produção foram executados com êxito após esta atualização.
+A validação de tipos, 30 testes automatizados — incluindo teste de interface do badge — e o build de produção foram executados com êxito após esta atualização.

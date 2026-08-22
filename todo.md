@@ -43,3 +43,7 @@
 - [x] Validar favoritos e marcadores eleitorais em desktop e celular com testes automatizados.
 - [x] Cobrir a apresentação visual dos marcadores de favoritos para estados sem contato, conversa e follow-up sem criar registros artificiais.
 - [x] Permitir registrar conversa e agendar o próximo follow-up diretamente em candidaturas favoritas.
+- [x] Restaurar marcadores de cor para as situações oficiais das candidaturas na Base eleitoral.
+- [x] Validar contraste e leitura das situações em desktop e celular.
+- [x] Registrar evidência visual verificável dos badges de situação em desktop e celular.
+- [x] Consolidar a cobertura automatizada da apresentação de badges de situação.
