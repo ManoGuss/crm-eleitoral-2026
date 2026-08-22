@@ -1,6 +1,6 @@
 # Publicação na Vercel
 
-O CRM possui uma interface Vite estática e uma API já publicada na hospedagem integrada. Para evitar a tela vazia causada por uma função serverless sem as credenciais e o runtime completos do CRM, a Vercel publica apenas `dist/public` e encaminha `/api/*` para a origem publicada do CRM. O arquivo `vercel.json` mantém `index.html` como fallback apenas das rotas da SPA.
+O CRM possui uma interface Vite estática e uma API já publicada na hospedagem integrada. Para evitar a tela vazia causada por uma função serverless sem as credenciais e o runtime completos do CRM, a Vercel publica apenas `dist/public` e encaminha `/api/*` para a origem publicada do CRM. O build da Vercel executa exclusivamente `pnpm exec vite build`, sem empacotar o servidor nem injetar scripts do runtime da hospedagem integrada. O arquivo `vercel.json` mantém `index.html` como fallback apenas das rotas da SPA.
 
 ## Configuração no painel da Vercel
 
@@ -12,4 +12,4 @@ Não é necessário replicar as credenciais de banco, OAuth ou armazenamento no 
 
 ## Verificação local
 
-O build gera `dist/public/index.html`, que é a saída estática correta para a Vercel. As rotas internas da SPA caem em `index.html`; as chamadas `/api/*` são reescritas para a origem da API e não são tratadas como arquivos estáticos. Esta separação garante que o painel não fique aguardando uma função indisponível na Vercel.
+O build gera `dist/public/index.html`, que é a saída estática correta para a Vercel. As rotas internas da SPA caem em `index.html`; as chamadas `/api/*` são reescritas para a origem da API e não são tratadas como arquivos estáticos. Esta separação garante que o painel não fique aguardando uma função indisponível na Vercel. A versão de build da Vercel não contém referências a `/__manus__/` nem ao runtime Manus.

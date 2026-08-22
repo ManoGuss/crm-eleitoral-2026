@@ -46,5 +46,6 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Acesso pessoal direto | Sem cookie ou sessão, o contexto do servidor resolve o registro do proprietário configurado; uma chamada anônima a `auth.me` retornou HTTP 200 e as rotas `/` e `/acesso` renderizaram diretamente o painel. |
 | Implicação de privacidade | O CRM passa a ser um espaço pessoal único sem barreira de login. Quem possuir o endereço publicado poderá ler e alterar o conteúdo; mantenha a URL fora de divulgação e reative autenticação se houver qualquer compartilhamento. |
 | Correção da Vercel | A configuração da Vercel serve apenas `dist/public`, encaminha `/api/*` para a API publicada do CRM (HTTP 200 validado) e preserva o fallback de SPA. A função serverless local foi removida para evitar a indisponibilidade que deixava a interface em tela azul. |
+| Artefato Vercel limpo | O build com `VERCEL=1 pnpm exec vite build` gerou `dist/public/index.html` sem scripts `/__manus__/` nem runtime Manus. O shell e o painel renderizam sem aguardar `auth.me`, evitando tela azul mesmo durante indisponibilidade temporária da API. |
 
-A validação de tipos, 32 testes automatizados — incluindo a configuração de proxy da Vercel — e o build de produção foram executados com êxito após esta atualização.
+A validação de tipos, 33 testes automatizados — incluindo o shell de renderização imediata — e o build estático equivalente ao da Vercel foram executados com êxito após esta atualização.

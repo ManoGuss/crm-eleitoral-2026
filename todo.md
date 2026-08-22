@@ -58,3 +58,7 @@
 - [x] Ajustar o carregamento inicial para não depender de uma API indisponível na Vercel.
 - [x] Validar o artefato estático e o proxy de API que elimina a tela azul vazia.
 - [x] Sincronizar a correção da Vercel ao GitHub e confirmar o novo deploy.
+- [x] Auditar todos os arquivos que determinam build, saída e roteamento da Vercel.
+- [x] Remover dependências de API no carregamento inicial do deploy estático.
+- [x] Remover scripts e build de runtime exclusivo da hospedagem integrada do artefato Vercel.
+- [x] Validar o artefato estático limpo e sincronizar a correção integral ao GitHub.

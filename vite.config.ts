@@ -150,7 +150,14 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+// A Vercel recebe somente a SPA estática. Os plugins de runtime e inspeção do
+// ambiente Manus não devem injetar scripts nesse artefato, pois não existem lá.
+const isVercelBuild = process.env.VERCEL === "1";
+const plugins = [
+  react(),
+  tailwindcss(),
+  ...(isVercelBuild ? [] : [jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()]),
+];
 
 export default defineConfig({
   plugins,
