@@ -66,3 +66,10 @@
 - [x] Exibir dados, falhas e estados vazios eleitorais sem carregamento infinito.
 - [x] Cobrir a seleção do espaço pessoal quando a API publicada não expuser o identificador do proprietário.
 - [x] Validar as abas eleitorais e sincronizar a correção ao GitHub.
+- [x] Definir indicadores de campanha e WhatsApp como canal de composição manual.
+- [x] Substituir o modelo de automação por variantes locais de mensagem, sem consentimento, fila ou disparo automático.
+- [x] Adicionar gráficos de indicadores de campanha ao painel principal.
+- [x] Substituir o envio automático por mensagens de WhatsApp preparadas para revisão e envio manual.
+- [x] Criar variantes personalizadas de mensagem para cada candidatura e ação de cópia/abertura manual no WhatsApp.
+- [x] Validar em desktop e celular os gráficos e o compositor de mensagem, incluindo cópia segura.
+- [x] Ampliar a validação funcional do compositor para WhatsApp público e ausência de canal declarado.
