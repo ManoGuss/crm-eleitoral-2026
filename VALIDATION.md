@@ -29,5 +29,8 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Decisão auditável | Teste automatizado confirma a persistência simulada de status, observação, responsável, data e sinal de revisão, sem alterar a base oficial. |
 | Guarda da fila pendente | O procedimento de revisão rejeita decisões para candidaturas que não estejam simultaneamente classificadas como “Provável — requer revisão” e pendentes. |
 | Condição atual dos dados | A coleta corrente não possui perfis prováveis; por isso, a rota apresenta o estado vazio e nenhuma candidatura oficial foi alterada somente para demonstrar o fluxo. |
+| Canais alternativos | A coleta incremental passou a extrair WhatsApp, e-mail e telefone apenas de campos públicos declarados no detalhe oficial; os links são normalizados e validados antes de serem exibidos. |
+| Prioridade de contato | A interface mostra WhatsApp, e-mail e telefone como canais acionáveis quando disponíveis, sem depender de um Instagram para liberar o contato. |
+| Reprocessamento controlado | Um lote de 64 candidaturas existentes foi reconsultado com sucesso para a nova extração; a rotina publicada continua o enriquecimento em lotes, sem pausar antes de esgotar contatos pendentes. |
 
 A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.

@@ -29,3 +29,6 @@
 - [x] Validar a fila de revisão e as ações de contato em desktop e celular.
 - [x] Cobrir em testes automatizados a fila de revisão e as decisões de aprovação ou rejeição.
 - [x] Confirmar funcionalmente a persistência de decisões de revisão sem alterar a base oficial de produção.
+- [x] Extrair e validar canais públicos alternativos de WhatsApp, e-mail e telefone das candidaturas.
+- [x] Priorizar canais de contato alternativos quando não houver Instagram na base eleitoral e na revisão manual.
+- [x] Cobrir a prioridade e a segurança dos novos links de contato com testes automatizados e validação visual.

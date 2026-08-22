@@ -1,7 +1,8 @@
-import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { electionCandidates, electionCollections } from "../drizzle/schema";
 import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
 import { buildManualReviewValues } from "./election-review-utils";
+import { extractPublicElectionContacts } from "./election-contact-utils";
 import { getDb } from "./db";
 
 async function requireDb() {
@@ -93,7 +94,7 @@ export async function verifyInstagramChunkForCollection(collectionId: number, li
   const collection = (await db.select().from(electionCollections).where(eq(electionCollections.id, collectionId)).limit(1))[0];
   if (!collection) throw new Error("Coleta eleitoral não encontrada.");
   const candidates = await db.select({ id: electionCandidates.id, officialCandidateId: electionCandidates.officialCandidateId, state: electionCandidates.state }).from(electionCandidates)
-    .where(and(eq(electionCandidates.collectionId, collectionId), isNull(electionCandidates.lastVerifiedAt))).orderBy(electionCandidates.id).limit(limit);
+    .where(and(eq(electionCandidates.collectionId, collectionId), or(isNull(electionCandidates.lastVerifiedAt), isNull(electionCandidates.contactsVerifiedAt)))).orderBy(electionCandidates.id).limit(limit);
   let verifiedInRun = 0;
   let failedInRun = 0;
   for (let start = 0; start < candidates.length; start += 8) {
@@ -103,36 +104,41 @@ export async function verifyInstagramChunkForCollection(collectionId: number, li
       try {
         const response = await fetch(source, { headers: { Accept: "application/json", "User-Agent": "CRM-Eleitoral-2026/1.0 (public-data-audit)" } });
         if (!response.ok) { failedInRun += 1; return; }
-        const detail = await response.json() as { sites?: unknown };
+        const detail = await response.json() as Record<string, unknown>;
         const declaredProfiles = Array.isArray(detail.sites) ? detail.sites.filter((site): site is string => typeof site === "string") : [];
         const instagrams = Array.from(new Set(declaredProfiles.map(normalizeInstagramUrl).filter((value): value is string => Boolean(value))));
+        const publicContacts = extractPublicElectionContacts(detail, source);
         if (instagrams.length) verifiedInRun += 1;
         await db.update(electionCandidates).set({
           declaredProfiles,
           primaryInstagram: instagrams[0] ?? null,
           secondaryInstagrams: instagrams.slice(1),
+          publicContacts,
           instagramVerification: instagrams.length ? "Verificado" : "Não localizado",
           verificationSignals: instagrams.length ? [
             { signal: "Registro oficial de candidatura no DivulgaCandContas", source },
             { signal: "Instagram declarado no campo público de sites da candidatura", source, url: instagrams[0] },
           ] : [],
           lastVerifiedAt: new Date(),
+          contactsVerifiedAt: new Date(),
         }).where(and(eq(electionCandidates.id, candidate.id), eq(electionCandidates.collectionId, collectionId)));
       } catch {
         failedInRun += 1;
       }
     }));
   }
-  const [checkedResult, verifiedResult, probableResult, totalResult] = await Promise.all([
+  const [checkedResult, verifiedResult, probableResult, totalResult, contactsPendingResult] = await Promise.all([
     db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), isNotNull(electionCandidates.lastVerifiedAt))),
     db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), eq(electionCandidates.instagramVerification, "Verificado"))),
     db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), eq(electionCandidates.instagramVerification, "Provável — requer revisão"))),
     db.select({ total: count() }).from(electionCandidates).where(eq(electionCandidates.collectionId, collectionId)),
+    db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), isNull(electionCandidates.contactsVerifiedAt))),
   ]);
   const checked = Number(checkedResult[0]?.total ?? 0);
   const verified = Number(verifiedResult[0]?.total ?? 0);
   const probable = Number(probableResult[0]?.total ?? 0);
   const total = Number(totalResult[0]?.total ?? 0);
+  const contactsPending = Number(contactsPendingResult[0]?.total ?? 0);
   const pending = Math.max(0, total - checked);
   const notFound = Math.max(0, checked - verified - probable);
   await db.update(electionCollections).set({
@@ -141,9 +147,9 @@ export async function verifyInstagramChunkForCollection(collectionId: number, li
     verifiedInstagramCount: verified,
     probableInstagramCount: probable,
     notFoundInstagramCount: notFound,
-    summary: { ...(collection.summary ?? {}), instagramVerification: { status: pending ? "em_processamento" : "concluida", source: "Campo público sites do detalhe oficial DivulgaCandContas", checked, pending, lastRun: { at: new Date().toISOString(), attempted: candidates.length, verified: verifiedInRun, failed: failedInRun } } },
+    summary: { ...(collection.summary ?? {}), instagramVerification: { status: pending ? "em_processamento" : "concluida", source: "Campo público sites do detalhe oficial DivulgaCandContas", checked, pending, lastRun: { at: new Date().toISOString(), attempted: candidates.length, verified: verifiedInRun, failed: failedInRun } }, publicContacts: { status: contactsPending ? "em_processamento" : "concluida", source: "Campos públicos declarados no detalhe oficial DivulgaCandContas", pending: contactsPending, lastRunAt: new Date().toISOString() } },
   }).where(eq(electionCollections.id, collectionId));
-  return { collectionId, attempted: candidates.length, verifiedInRun, failedInRun, checked, pending, complete: pending === 0 };
+  return { collectionId, attempted: candidates.length, verifiedInRun, failedInRun, checked, pending, contactsPending, complete: pending === 0 && contactsPending === 0 };
 }
 
 export async function collectOfficial2026ForUser(userId: number) {
