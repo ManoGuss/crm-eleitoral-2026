@@ -1,7 +1,9 @@
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
+import { parse as parseCookie } from "cookie";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { COOKIE_NAME } from "@shared/const";
 import { contacts, importSheets, imports } from "../../drizzle/schema";
 import {
   addContactForUser,
@@ -30,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser } from "../election-db";
+import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, setInstagramVerificationTaskForUser } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -42,6 +44,7 @@ import {
 } from "../crm-utils";
 import { storageGetSignedUrl, storagePut } from "../storage";
 import { protectedProcedure, router } from "../_core/trpc";
+import { createHeartbeatJob, updateHeartbeatJob } from "../_core/heartbeat";
 
 const statusSchema = z.enum(CRM_STATUSES);
 const contactTypeSchema = z.enum(["whatsapp", "telefone", "email", "instagram", "facebook", "site", "outro"]);
@@ -354,6 +357,34 @@ export const crmRouter = router({
       return collection;
     }),
     runOfficialCollection: protectedProcedure.mutation(({ ctx }) => collectOfficial2026ForUser(ctx.user.id)),
+    startInstagramVerification: protectedProcedure.input(z.object({ collectionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const collection = await getElectionCollectionForUser(ctx.user.id, input.collectionId);
+      if (!collection) throw new TRPCError({ code: "NOT_FOUND", message: "Coleta não encontrada." });
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sua sessão não está disponível para iniciar a verificação programada." });
+      if (collection.collection.instagramVerificationTaskUid) {
+        const job = await updateHeartbeatJob(collection.collection.instagramVerificationTaskUid, { enable: true }, sessionToken);
+        return { taskUid: collection.collection.instagramVerificationTaskUid, ...job, resumed: true };
+      }
+      const job = await createHeartbeatJob({
+        name: `election-instagram-${input.collectionId}`,
+        cron: "0 */5 * * * *",
+        path: "/api/scheduled/election-instagram-verification",
+        payload: { collectionId: input.collectionId },
+        description: "Verifica em lotes os sites declarados em candidaturas estaduais de 2026.",
+      }, sessionToken);
+      const saved = await setInstagramVerificationTaskForUser(ctx.user.id, input.collectionId, job.taskUid);
+      if (!saved) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível vincular a rotina à coleta." });
+      return { ...job, resumed: false };
+    }),
+    pauseInstagramVerification: protectedProcedure.input(z.object({ collectionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const collection = await getElectionCollectionForUser(ctx.user.id, input.collectionId);
+      const taskUid = collection?.collection.instagramVerificationTaskUid;
+      if (!taskUid) throw new TRPCError({ code: "NOT_FOUND", message: "Nenhuma verificação programada foi encontrada para esta coleta." });
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sua sessão não está disponível para pausar a verificação." });
+      return updateHeartbeatJob(taskUid, { enable: false }, sessionToken);
+    }),
     listCandidates: protectedProcedure.input(z.object({
       collectionId: z.number().int().positive(),
       page: z.number().int().min(1).default(1),

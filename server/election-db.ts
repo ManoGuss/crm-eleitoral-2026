@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { electionCandidates, electionCollections } from "../drizzle/schema";
 import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
 import { getDb } from "./db";
@@ -7,6 +7,20 @@ async function requireDb() {
   const db = await getDb();
   if (!db) throw new Error("Banco de dados indisponível no momento.");
   return db;
+}
+
+const DIVULGACAND_API_BASE = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1";
+const ELECTION_2026_ID = 20322002026;
+
+function normalizeInstagramUrl(value: string) {
+  try {
+    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
+    if (!/(^|\.)instagram\.com$/i.test(url.hostname)) return null;
+    const handle = url.pathname.split("/").filter(Boolean)[0];
+    return handle ? `https://instagram.com/${handle.toLowerCase()}` : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function listElectionCollectionsForUser(userId: number) {
@@ -24,6 +38,17 @@ export async function getElectionCollectionForUser(userId: number, id: number) {
     db.select({ state: electionCandidates.state, total: count() }).from(electionCandidates).where(and(eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, id))).groupBy(electionCandidates.state).orderBy(electionCandidates.state),
   ]);
   return { collection, byCargo, byInstagram, byState };
+}
+
+export async function getElectionCollectionByInstagramTask(taskUid: string) {
+  const db = await requireDb();
+  return (await db.select().from(electionCollections).where(eq(electionCollections.instagramVerificationTaskUid, taskUid)).limit(1))[0] ?? null;
+}
+
+export async function setInstagramVerificationTaskForUser(userId: number, collectionId: number, taskUid: string | null) {
+  const db = await requireDb();
+  const result = await db.update(electionCollections).set({ instagramVerificationTaskUid: taskUid }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
+  return result[0]?.affectedRows === 1;
 }
 
 export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; query?: string }) {
@@ -45,6 +70,64 @@ export async function listElectionCandidatesForUser(userId: number, input: { col
     db.select({ total: count() }).from(electionCandidates).where(where),
   ]);
   return { items, total: totalResult[0]?.total ?? 0 };
+}
+
+export async function verifyInstagramChunkForCollection(collectionId: number, limit = 64) {
+  const db = await requireDb();
+  const collection = (await db.select().from(electionCollections).where(eq(electionCollections.id, collectionId)).limit(1))[0];
+  if (!collection) throw new Error("Coleta eleitoral não encontrada.");
+  const candidates = await db.select({ id: electionCandidates.id, officialCandidateId: electionCandidates.officialCandidateId, state: electionCandidates.state }).from(electionCandidates)
+    .where(and(eq(electionCandidates.collectionId, collectionId), isNull(electionCandidates.lastVerifiedAt))).orderBy(electionCandidates.id).limit(limit);
+  let verifiedInRun = 0;
+  let failedInRun = 0;
+  for (let start = 0; start < candidates.length; start += 8) {
+    const batch = candidates.slice(start, start + 8);
+    await Promise.all(batch.map(async candidate => {
+      const source = `${DIVULGACAND_API_BASE}/candidatura/buscar/2026/${candidate.state}/${ELECTION_2026_ID}/candidato/${candidate.officialCandidateId}`;
+      try {
+        const response = await fetch(source, { headers: { Accept: "application/json", "User-Agent": "CRM-Eleitoral-2026/1.0 (public-data-audit)" } });
+        if (!response.ok) { failedInRun += 1; return; }
+        const detail = await response.json() as { sites?: unknown };
+        const declaredProfiles = Array.isArray(detail.sites) ? detail.sites.filter((site): site is string => typeof site === "string") : [];
+        const instagrams = Array.from(new Set(declaredProfiles.map(normalizeInstagramUrl).filter((value): value is string => Boolean(value))));
+        if (instagrams.length) verifiedInRun += 1;
+        await db.update(electionCandidates).set({
+          declaredProfiles,
+          primaryInstagram: instagrams[0] ?? null,
+          secondaryInstagrams: instagrams.slice(1),
+          instagramVerification: instagrams.length ? "Verificado" : "Não localizado",
+          verificationSignals: instagrams.length ? [
+            { signal: "Registro oficial de candidatura no DivulgaCandContas", source },
+            { signal: "Instagram declarado no campo público de sites da candidatura", source, url: instagrams[0] },
+          ] : [],
+          lastVerifiedAt: new Date(),
+        }).where(and(eq(electionCandidates.id, candidate.id), eq(electionCandidates.collectionId, collectionId)));
+      } catch {
+        failedInRun += 1;
+      }
+    }));
+  }
+  const [checkedResult, verifiedResult, probableResult, totalResult] = await Promise.all([
+    db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), isNotNull(electionCandidates.lastVerifiedAt))),
+    db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), eq(electionCandidates.instagramVerification, "Verificado"))),
+    db.select({ total: count() }).from(electionCandidates).where(and(eq(electionCandidates.collectionId, collectionId), eq(electionCandidates.instagramVerification, "Provável — requer revisão"))),
+    db.select({ total: count() }).from(electionCandidates).where(eq(electionCandidates.collectionId, collectionId)),
+  ]);
+  const checked = Number(checkedResult[0]?.total ?? 0);
+  const verified = Number(verifiedResult[0]?.total ?? 0);
+  const probable = Number(probableResult[0]?.total ?? 0);
+  const total = Number(totalResult[0]?.total ?? 0);
+  const pending = Math.max(0, total - checked);
+  const notFound = Math.max(0, checked - verified - probable);
+  await db.update(electionCollections).set({
+    instagramCheckedCount: checked,
+    instagramPendingCount: pending,
+    verifiedInstagramCount: verified,
+    probableInstagramCount: probable,
+    notFoundInstagramCount: notFound,
+    summary: { ...(collection.summary ?? {}), instagramVerification: { status: pending ? "em_processamento" : "concluida", source: "Campo público sites do detalhe oficial DivulgaCandContas", checked, pending, lastRun: { at: new Date().toISOString(), attempted: candidates.length, verified: verifiedInRun, failed: failedInRun } } },
+  }).where(eq(electionCollections.id, collectionId));
+  return { collectionId, attempted: candidates.length, verifiedInRun, failedInRun, checked, pending, complete: pending === 0 };
 }
 
 export async function collectOfficial2026ForUser(userId: number) {

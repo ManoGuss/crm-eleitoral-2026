@@ -1,0 +1,2 @@
+ALTER TABLE `electionCollections` ADD `instagramVerificationTaskUid` varchar(65);--> statement-breakpoint
+CREATE INDEX `election_collections_instagram_task_idx` ON `electionCollections` (`instagramVerificationTaskUid`);

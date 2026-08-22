@@ -189,6 +189,7 @@ export const electionCollections = mysqlTable(
     sourceUrl: varchar("sourceUrl", { length: 1200 }).notNull(),
     sourceStatus: mysqlEnum("sourceStatus", ["disponivel", "indisponivel", "processado", "falhou"]).default("disponivel").notNull(),
     processStatus: mysqlEnum("processStatus", ["pendente", "em_processamento", "concluida", "incompleta", "falhou"]).default("pendente").notNull(),
+    instagramVerificationTaskUid: varchar("instagramVerificationTaskUid", { length: 65 }),
     dataCutoffAt: timestamp("dataCutoffAt"),
     processedAt: timestamp("processedAt"),
     totalCandidates: int("totalCandidates").default(0).notNull(),
@@ -203,7 +204,10 @@ export const electionCollections = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  table => [index("election_collections_user_created_idx").on(table.userId, table.createdAt)]
+  table => [
+    index("election_collections_user_created_idx").on(table.userId, table.createdAt),
+    index("election_collections_instagram_task_idx").on(table.instagramVerificationTaskUid),
+  ]
 );
 
 export const electionCandidates = mysqlTable(

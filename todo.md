@@ -22,3 +22,4 @@
 - [ ] Validar perfis públicos de Instagram por evidências múltiplas, sem associação por mera semelhança de nome. Limitação atual: 528 consultas oficiais individuais concluídas; a verificação integral foi interrompida para evitar carga excessiva e permanece pendente.
 - [x] Consolidar totais por estado e cargo, cobertura de Instagram e relatório de fontes e limitações técnicas.
 - [x] Disponibilizar a base eleitoral nacional em uma consulta paginada e responsiva, com filtros por UF, cargo e classificação de Instagram.
+- [ ] Publicar a versão com rotina incremental e iniciar a verificação programada dos sites declarados em candidaturas.
