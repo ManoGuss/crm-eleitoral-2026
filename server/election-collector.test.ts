@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { candidateForStorage, csvRecords, INCLUDED_OFFICES, parseDelimitedCsv, type OfficialElectionCandidate } from "./election-collector";
+import { candidateForStorage, csvRecords, INCLUDED_OFFICES, parseDelimitedCsv, uniqueOfficialCandidates, type OfficialElectionCandidate } from "./election-collector";
 
 describe("coletor eleitoral oficial", () => {
   it("interpreta CSV com separador, aspas e quebras de linha sem deslocar colunas", () => {
@@ -28,5 +28,10 @@ describe("normalização para persistência eleitoral", () => {
     expect(normalized.candidateName).toHaveLength(500);
     expect(normalized.declaredProfiles[0]).toHaveLength(1200);
     expect(normalized.sourceRecord).toEqual({ original: "valor oficial" });
+  });
+
+  it("remove duplicidade pelo identificador oficial antes de cada lote de inserção", () => {
+    const base: OfficialElectionCandidate = { officialCandidateId: "123", state: "SP", cargo: "DEPUTADO FEDERAL", candidateName: "Pessoa", ballotName: null, candidateNumber: null, party: null, federation: null, candidateStatus: null, ballotAvailability: "Em análise", city: null, declaredProfiles: [], primaryInstagram: null, secondaryInstagrams: [], instagramVerification: "Não localizado", verificationSignals: [], sourceRecord: {} };
+    expect(uniqueOfficialCandidates([base, { ...base, candidateName: "Pessoa atualizada" }])).toEqual([{ ...base, candidateName: "Pessoa atualizada" }]);
   });
 });

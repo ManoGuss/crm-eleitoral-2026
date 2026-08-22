@@ -74,6 +74,10 @@ export function candidateForStorage(candidate: OfficialElectionCandidate): Offic
   };
 }
 
+export function uniqueOfficialCandidates(candidates: OfficialElectionCandidate[]) {
+  return Array.from(new Map(candidates.map(candidate => [candidate.officialCandidateId, candidate])).values());
+}
+
 function buildCandidateFromCsv(record: CsvRecord, declaredProfiles: string[]): OfficialElectionCandidate | null {
   const cargo = first(record, ["DS_CARGO"]); const officialCandidateId = first(record, ["SQ_CANDIDATO"]); const state = first(record, ["SG_UF"]); const candidateName = first(record, ["NM_CANDIDATO"]);
   if (!INCLUDED_OFFICES.has(normalize(cargo)) || !officialCandidateId || !state || !candidateName) return null;
@@ -87,7 +91,9 @@ async function loadFromOfficialFiles(): Promise<OfficialLoadResult> {
   try { socialRows = csvFilesInZip(await downloadOfficialFile(TSE_SOCIAL_NETWORKS_URL)).flatMap(csvRecords); } catch (error) { notes.push(error instanceof Error ? error.message : "Arquivo oficial de redes sociais indisponível."); }
   const socialByCandidate = new Map<string, string[]>();
   socialRows.forEach(row => { const candidateId = first(row, ["SQ_CANDIDATO"]); const network = first(row, ["DS_REDE_SOCIAL", "NM_REDE_SOCIAL", "DS_URL"]); if (candidateId && network) socialByCandidate.set(candidateId, [...(socialByCandidate.get(candidateId) ?? []), network]); });
-  const candidates = csvFilesInZip(candidateFile).flatMap(csvRecords).map(record => buildCandidateFromCsv(record, Array.from(new Set(socialByCandidate.get(first(record, ["SQ_CANDIDATO"])) ?? [])))).filter((candidate): candidate is OfficialElectionCandidate => Boolean(candidate));
+  const parsedCandidates = csvFilesInZip(candidateFile).flatMap(csvRecords).map(record => buildCandidateFromCsv(record, Array.from(new Set(socialByCandidate.get(first(record, ["SQ_CANDIDATO"])) ?? [])))).filter((candidate): candidate is OfficialElectionCandidate => Boolean(candidate));
+  const candidates = uniqueOfficialCandidates(parsedCandidates);
+  if (candidates.length !== parsedCandidates.length) notes.push(`Foram removidos ${parsedCandidates.length - candidates.length} registro(s) repetido(s) pelo identificador oficial da candidatura.`);
   const officialTotals = Object.fromEntries(Object.entries(candidates.reduce<Record<string, number>>((totals, candidate) => ({ ...totals, [candidate.cargo]: (totals[candidate.cargo] ?? 0) + 1 }), {})));
   return { candidates, officialTotals, sourceUrl: TSE_CANDIDATES_URL, sourceMode: "arquivo_tse", notes };
 }
@@ -112,7 +118,7 @@ async function loadFromDivulgaCandApi(): Promise<OfficialLoadResult> {
     }));
     responses.forEach((payload, index) => { if (!payload?.cargo?.nome) return; const job = batch[index]; const cargo = payload.cargo.nome; const city = payload.unidadeEleitoral?.nome ?? ""; (payload.candidatos ?? []).forEach(item => { const parsed = buildCandidateFromApi(item, job.state, cargo, city); if (parsed) candidates.push(parsed); }); });
   }
-  const deduplicated = Array.from(new Map(candidates.map(candidate => [candidate.officialCandidateId, candidate])).values());
+  const deduplicated = uniqueOfficialCandidates(candidates);
   const officialTotals = deduplicated.reduce<Record<string, number>>((totals, candidate) => ({ ...totals, [candidate.cargo]: (totals[candidate.cargo] ?? 0) + 1 }), {});
   return { candidates: deduplicated, officialTotals, sourceUrl: `${DIVULGACAND_API_BASE}/candidatura/listar/2026/{UF}/${ELECTION_2026_ID}/{cargo}/candidatos`, sourceMode: "api_divulgacand", notes };
 }
