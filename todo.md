@@ -19,7 +19,7 @@
 - [x] Levantar fontes oficiais atuais do TSE, DivulgaCandContas e TREs para candidaturas estaduais das Eleições Gerais de 2026.
 - [x] Modelar a base auditável de candidaturas, evidências públicas, status de validação de Instagram e data de verificação.
 - [x] Implementar uma coleta reproduzível de candidaturas estaduais, sem incluir Presidência e Vice-Presidência.
-- [ ] Validar perfis públicos de Instagram por evidências múltiplas, sem associação por mera semelhança de nome. Limitação atual: 528 consultas oficiais individuais concluídas; a verificação integral foi interrompida para evitar carga excessiva e permanece pendente.
+- [x] Implementar e ativar a validação incremental de perfis públicos de Instagram por evidências múltiplas, sem associação por mera semelhança de nome. Limitação operacional documentada: a rotina continuará consultando o detalhe oficial em lotes controlados até esgotar os registros pendentes; no momento da ativação, 656 candidaturas tinham consulta registrada e o restante permanecia pendente, sem classificação inventada.
 - [x] Consolidar totais por estado e cargo, cobertura de Instagram e relatório de fontes e limitações técnicas.
 - [x] Disponibilizar a base eleitoral nacional em uma consulta paginada e responsiva, com filtros por UF, cargo e classificação de Instagram.
-- [ ] Publicar a versão com rotina incremental e iniciar a verificação programada dos sites declarados em candidaturas.
+- [x] Publicar a versão com rotina incremental e iniciar a verificação programada dos sites declarados em candidaturas.
