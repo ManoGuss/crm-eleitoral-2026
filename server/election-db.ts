@@ -1,7 +1,7 @@
 import { and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { electionCandidateFavorites, electionCandidates, electionCollections } from "../drizzle/schema";
 import type { CommercialMarker } from "../shared/commercial";
-import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
+import { candidateForStorage, loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
 import { buildManualReviewValues } from "./election-review-utils";
 import { extractPublicElectionContacts } from "./election-contact-utils";
 import { getDb } from "./db";
@@ -190,11 +190,13 @@ export async function collectOfficial2026ForUser(userId: number) {
     summary: { candidatesUrl: TSE_CANDIDATES_URL, socialNetworksUrl: TSE_SOCIAL_NETWORKS_URL, scope: ["Governador", "Vice-governador", "Senador", "1º Suplente", "2º Suplente", "Deputado Federal", "Deputado Estadual"] },
   });
   const collectionId = Number(created[0].insertId);
+  let sourceLoaded = false;
   try {
     const { candidates, officialTotals, sourceUrl, sourceMode, notes } = await loadOfficial2026Candidates();
+    sourceLoaded = true;
     for (let start = 0; start < candidates.length; start += 250) {
       const batch = candidates.slice(start, start + 250);
-      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidate, collectionId, userId })));
+      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidateForStorage(candidate), collectionId, userId })));
     }
     const verifiedInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Verificado").length;
     const probableInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Provável — requer revisão").length;
@@ -217,12 +219,12 @@ export async function collectOfficial2026ForUser(userId: number) {
       errorReport: coverageIssue ? [{ stage: "conferencia_cobertura_uf", reason: `A fonte retornou ${coveredUfs.length} UF(s): ${coveredUfs.join(", ")}. A coleta não foi marcada como completa.` }] : null,
     }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "Falha desconhecida ao acessar a fonte oficial.";
+    const reason = error instanceof Error ? error.message : "Falha desconhecida ao processar a fonte oficial.";
     await db.update(electionCollections).set({
-      sourceStatus: "indisponivel",
-      processStatus: "incompleta",
+      sourceStatus: sourceLoaded ? "falhou" : "indisponivel",
+      processStatus: "falhou",
       processedAt: new Date(),
-      errorReport: [{ stage: "download_fonte_oficial", reason }],
+      errorReport: [{ stage: sourceLoaded ? "persistencia_candidaturas" : "download_fonte_oficial", reason }],
     }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
   }
   return getElectionCollectionForUser(userId, collectionId);

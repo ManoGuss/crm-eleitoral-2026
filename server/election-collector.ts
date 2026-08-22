@@ -53,6 +53,27 @@ export type OfficialElectionCandidate = {
 };
 export type OfficialLoadResult = { candidates: OfficialElectionCandidate[]; officialTotals: Record<string, number>; sourceUrl: string; sourceMode: "arquivo_tse" | "api_divulgacand"; notes: string[] };
 
+function bounded(value: string | null, maximum: number) { return value ? value.slice(0, maximum) : null; }
+
+export function candidateForStorage(candidate: OfficialElectionCandidate): OfficialElectionCandidate {
+  return {
+    ...candidate,
+    officialCandidateId: candidate.officialCandidateId.slice(0, 128),
+    state: candidate.state.slice(0, 2),
+    cargo: candidate.cargo.slice(0, 120),
+    candidateName: candidate.candidateName.slice(0, 500),
+    ballotName: bounded(candidate.ballotName, 500),
+    candidateNumber: bounded(candidate.candidateNumber, 32),
+    party: bounded(candidate.party, 120),
+    federation: bounded(candidate.federation, 255),
+    candidateStatus: bounded(candidate.candidateStatus, 180),
+    city: bounded(candidate.city, 255),
+    declaredProfiles: candidate.declaredProfiles.map(profile => profile.slice(0, 1200)).slice(0, 100),
+    primaryInstagram: bounded(candidate.primaryInstagram, 1200),
+    secondaryInstagrams: candidate.secondaryInstagrams.map(profile => profile.slice(0, 1200)).slice(0, 100),
+  };
+}
+
 function buildCandidateFromCsv(record: CsvRecord, declaredProfiles: string[]): OfficialElectionCandidate | null {
   const cargo = first(record, ["DS_CARGO"]); const officialCandidateId = first(record, ["SQ_CANDIDATO"]); const state = first(record, ["SG_UF"]); const candidateName = first(record, ["NM_CANDIDATO"]);
   if (!INCLUDED_OFFICES.has(normalize(cargo)) || !officialCandidateId || !state || !candidateName) return null;

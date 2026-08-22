@@ -73,3 +73,6 @@
 - [x] Criar variantes personalizadas de mensagem para cada candidatura e ação de cópia/abertura manual no WhatsApp.
 - [x] Validar em desktop e celular os gráficos e o compositor de mensagem, incluindo cópia segura.
 - [x] Ampliar a validação funcional do compositor para WhatsApp público e ausência de canal declarado.
+- [x] Diagnosticar a indisponibilidade de fonte ao atualizar a Coleta eleitoral.
+- [ ] Validar a correção da atualização e a preservação dos registros oficiais auditáveis.
+- [ ] Validar o resultado e os estados da Coleta eleitoral publicada.

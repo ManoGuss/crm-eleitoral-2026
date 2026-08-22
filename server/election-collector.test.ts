@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { csvRecords, INCLUDED_OFFICES, parseDelimitedCsv } from "./election-collector";
+import { candidateForStorage, csvRecords, INCLUDED_OFFICES, parseDelimitedCsv, type OfficialElectionCandidate } from "./election-collector";
 
 describe("coletor eleitoral oficial", () => {
   it("interpreta CSV com separador, aspas e quebras de linha sem deslocar colunas", () => {
@@ -17,5 +17,16 @@ describe("coletor eleitoral oficial", () => {
     expect(INCLUDED_OFFICES.has("DEPUTADO FEDERAL")).toBe(true);
     expect(INCLUDED_OFFICES.has("PRESIDENTE")).toBe(false);
     expect(INCLUDED_OFFICES.has("VICE-PRESIDENTE")).toBe(false);
+  });
+});
+
+describe("normalização para persistência eleitoral", () => {
+  it("limita apenas campos com teto físico e preserva o registro-fonte oficial", () => {
+    const candidate: OfficialElectionCandidate = { officialCandidateId: "1".repeat(180), state: "MINAS", cargo: "C".repeat(130), candidateName: "N".repeat(520), ballotName: "U".repeat(520), candidateNumber: "7".repeat(40), party: "P".repeat(140), federation: "F".repeat(270), candidateStatus: "S".repeat(190), ballotAvailability: "Em análise", city: "C".repeat(260), declaredProfiles: ["https://instagram.com/" + "i".repeat(1300)], primaryInstagram: "https://instagram.com/" + "i".repeat(1300), secondaryInstagrams: ["https://instagram.com/" + "j".repeat(1300)], instagramVerification: "Não localizado", verificationSignals: [], sourceRecord: { original: "valor oficial" } };
+    const normalized = candidateForStorage(candidate);
+    expect(normalized.officialCandidateId).toHaveLength(128);
+    expect(normalized.candidateName).toHaveLength(500);
+    expect(normalized.declaredProfiles[0]).toHaveLength(1200);
+    expect(normalized.sourceRecord).toEqual({ original: "valor oficial" });
   });
 });
