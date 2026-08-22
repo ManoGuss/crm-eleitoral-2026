@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   activities,
@@ -96,6 +96,7 @@ type LeadFilters = {
   city?: string;
   sourceImportId?: number;
   followUp?: "overdue" | "upcoming";
+  commercialMarker?: "sem_contato" | "em_conversa" | "aguardando_retorno" | "negociacao" | "follow_up" | "proposta" | "fechado" | "perdido";
 };
 
 export async function listLeadsForUser(userId: number, filters: LeadFilters) {
@@ -105,6 +106,14 @@ export async function listLeadsForUser(userId: number, filters: LeadFilters) {
   if (filters.sourceImportId) conditions.push(eq(leads.sourceImportId, filters.sourceImportId));
   if (filters.followUp === "overdue") conditions.push(sql`${leads.followUpAt} < now()`);
   if (filters.followUp === "upcoming") conditions.push(sql`${leads.followUpAt} >= now()`);
+  if (filters.commercialMarker === "sem_contato") conditions.push(and(eq(leads.status, "Novo"), isNull(leads.lastContactAt))!);
+  if (filters.commercialMarker === "em_conversa") conditions.push(or(inArray(leads.status, ["Abordado", "Respondeu"]), isNotNull(leads.lastContactAt))!);
+  if (filters.commercialMarker === "aguardando_retorno") conditions.push(eq(leads.status, "Não respondeu"));
+  if (filters.commercialMarker === "negociacao") conditions.push(eq(leads.status, "Interessado"));
+  if (filters.commercialMarker === "follow_up") conditions.push(or(eq(leads.status, "Follow-up"), and(isNotNull(leads.followUpAt), notInArray(leads.status, ["Fechado", "Perdido"])))!);
+  if (filters.commercialMarker === "proposta") conditions.push(eq(leads.status, "Proposta enviada"));
+  if (filters.commercialMarker === "fechado") conditions.push(eq(leads.status, "Fechado"));
+  if (filters.commercialMarker === "perdido") conditions.push(eq(leads.status, "Perdido"));
   if (filters.query?.trim()) {
     const term = `%${filters.query.trim()}%`;
     conditions.push(sql`(cast(${leads.customFields} as char) like ${term} OR ${leads.description} like ${term})`);

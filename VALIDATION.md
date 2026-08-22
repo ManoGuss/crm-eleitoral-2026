@@ -32,5 +32,8 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Canais alternativos | A coleta incremental passou a extrair WhatsApp, e-mail e telefone apenas de campos públicos declarados no detalhe oficial; os links são normalizados e validados antes de serem exibidos. |
 | Prioridade de contato | A interface mostra WhatsApp, e-mail e telefone como canais acionáveis quando disponíveis, sem depender de um Instagram para liberar o contato. |
 | Reprocessamento controlado | Um lote de 64 candidaturas existentes foi reconsultado com sucesso para a nova extração; a rotina publicada continua o enriquecimento em lotes, sem pausar antes de esgotar contatos pendentes. |
+| Marcadores comerciais | A listagem de leads apresenta filtros rápidos para sem contato, conversa, retorno, negociação, follow-up, proposta, projeto fechado e perda; a prioridade é derivada de status, último contato e próxima ação. |
+| Ação rápida de conversa | O detalhe do lead permite registrar uma conversa realizada, gravando o horário e promovendo automaticamente o status “Novo” para “Abordado”. |
+| Contrato de filtros | A suíte automatizada confirma que o marcador comercial é encaminhado pela rota protegida e que o registro de conversa persiste status e horário no escopo do usuário. |
 
 A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.

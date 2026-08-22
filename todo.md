@@ -32,3 +32,8 @@
 - [x] Extrair e validar canais públicos alternativos de WhatsApp, e-mail e telefone das candidaturas.
 - [x] Priorizar canais de contato alternativos quando não houver Instagram na base eleitoral e na revisão manual.
 - [x] Cobrir a prioridade e a segurança dos novos links de contato com testes automatizados e validação visual.
+- [x] Definir e apresentar marcadores de contato, negociação, follow-up, projeto fechado e oportunidade perdida.
+- [x] Adicionar filtros rápidos de situação comercial e ação prioritária à listagem de leads.
+- [x] Permitir atualizar a situação e o próximo follow-up diretamente na gestão do lead.
+- [x] Validar marcadores e filtros de acompanhamento em desktop e celular com testes automatizados.
+- [x] Cobrir o contrato protegido de filtro comercial e registro de conversa sem inserir dados de demonstração na base.

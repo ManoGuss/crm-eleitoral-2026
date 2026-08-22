@@ -117,6 +117,7 @@ export const crmRouter = router({
       city: z.string().max(255).optional(),
       sourceImportId: z.number().int().positive().optional(),
       followUp: z.enum(["overdue", "upcoming"]).optional(),
+      commercialMarker: z.enum(["sem_contato", "em_conversa", "aguardando_retorno", "negociacao", "follow_up", "proposta", "fechado", "perdido"]).optional(),
     })).query(({ ctx, input }) => listLeadsForUser(ctx.user.id, input)),
     electionFilterOptions: protectedProcedure.query(({ ctx }) => getLeadElectionFilterOptions(ctx.user.id)),
     get: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
