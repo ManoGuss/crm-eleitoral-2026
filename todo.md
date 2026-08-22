@@ -76,4 +76,5 @@
 - [x] Diagnosticar a indisponibilidade de fonte ao atualizar a Coleta eleitoral.
 - [ ] Validar a correção da atualização e a preservação dos registros oficiais auditáveis.
 - [ ] Executar nova coleta oficial deduplicada e confirmar o total completo de candidaturas.
+- [ ] Garantir inserção idempotente caso a fonte apresente duplicidade residual em um lote.
 - [ ] Validar o resultado e os estados da Coleta eleitoral publicada.

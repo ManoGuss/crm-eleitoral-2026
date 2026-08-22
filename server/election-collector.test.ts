@@ -34,4 +34,9 @@ describe("normalização para persistência eleitoral", () => {
     const base: OfficialElectionCandidate = { officialCandidateId: "123", state: "SP", cargo: "DEPUTADO FEDERAL", candidateName: "Pessoa", ballotName: null, candidateNumber: null, party: null, federation: null, candidateStatus: null, ballotAvailability: "Em análise", city: null, declaredProfiles: [], primaryInstagram: null, secondaryInstagrams: [], instagramVerification: "Não localizado", verificationSignals: [], sourceRecord: {} };
     expect(uniqueOfficialCandidates([base, { ...base, candidateName: "Pessoa atualizada" }])).toEqual([{ ...base, candidateName: "Pessoa atualizada" }]);
   });
+
+  it("mantém identificadores distintos para a inserção idempotente por coleta", () => {
+    const base: OfficialElectionCandidate = { officialCandidateId: "123", state: "SP", cargo: "DEPUTADO FEDERAL", candidateName: "Pessoa", ballotName: null, candidateNumber: null, party: null, federation: null, candidateStatus: null, ballotAvailability: "Em análise", city: null, declaredProfiles: [], primaryInstagram: null, secondaryInstagrams: [], instagramVerification: "Não localizado", verificationSignals: [], sourceRecord: {} };
+    expect(uniqueOfficialCandidates([base, { ...base, officialCandidateId: "456" }]).map(item => item.officialCandidateId)).toEqual(["123", "456"]);
+  });
 });

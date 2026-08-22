@@ -194,9 +194,11 @@ export async function collectOfficial2026ForUser(userId: number) {
   try {
     const { candidates, officialTotals, sourceUrl, sourceMode, notes } = await loadOfficial2026Candidates();
     sourceLoaded = true;
-    for (let start = 0; start < candidates.length; start += 250) {
-      const batch = candidates.slice(start, start + 250);
-      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidateForStorage(candidate), collectionId, userId })));
+    for (let start = 0; start < candidates.length; start += 100) {
+      const batch = candidates.slice(start, start + 100);
+      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidateForStorage(candidate), collectionId, userId }))).onDuplicateKeyUpdate({
+        set: { officialCandidateId: sql`VALUES(${electionCandidates.officialCandidateId})` },
+      });
     }
     const verifiedInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Verificado").length;
     const probableInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Provável — requer revisão").length;
@@ -219,7 +221,7 @@ export async function collectOfficial2026ForUser(userId: number) {
       errorReport: coverageIssue ? [{ stage: "conferencia_cobertura_uf", reason: `A fonte retornou ${coveredUfs.length} UF(s): ${coveredUfs.join(", ")}. A coleta não foi marcada como completa.` }] : null,
     }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "Falha desconhecida ao processar a fonte oficial.";
+    const reason = error instanceof Error ? `${error.message}${error.cause ? ` | causa: ${String(error.cause)}` : ""}` : "Falha desconhecida ao processar a fonte oficial.";
     await db.update(electionCollections).set({
       sourceStatus: sourceLoaded ? "falhou" : "indisponivel",
       processStatus: "falhou",
