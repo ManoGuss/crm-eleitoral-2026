@@ -47,3 +47,7 @@
 - [x] Validar contraste e leitura das situações em desktop e celular.
 - [x] Registrar evidência visual verificável dos badges de situação em desktop e celular.
 - [x] Consolidar a cobertura automatizada da apresentação de badges de situação.
+- [x] Inspecionar o artefato de build e a configuração atual para deploy estático na Vercel.
+- [x] Configurar a Vercel para publicar a interface estática com fallback de SPA e preservar `/api/*` em função serverless.
+- [x] Validar a configuração de saída estática, fallback de SPA e função serverless da Vercel.
+- [x] Sincronizar a correção validada com o repositório GitHub conectado.

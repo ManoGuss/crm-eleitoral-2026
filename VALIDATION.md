@@ -41,5 +41,7 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Situações oficiais | A Base eleitoral voltou a apresentar badges de alto contraste: verde para deferidas, âmbar para pendentes ou aguardando julgamento, vermelho para renúncias e indeferimentos, e cinza para situações sem classificação publicada. |
 | Evidência visual — desktop | A captura de `/base-eleitoral` em 1280×720 exibiu simultaneamente “Renúncia” em vermelho e “Aguardando julgamento” em âmbar, ambos legíveis na coluna Situação. |
 | Evidência visual — celular | A captura de `/base-eleitoral` em 375×812 confirmou os mesmos badges abaixo de cargo e partido nos cartões, sem corte horizontal e com contraste legível. |
+| Artefato para Vercel | O build local confirmou `dist/public/index.html` como saída da interface; `vercel.json` aponta explicitamente para essa pasta e aplica o fallback da SPA apenas depois da resolução de arquivos e funções. |
+| Runtime da Vercel | A entrada `api/[...path].ts` reutiliza a aplicação Express para manter OAuth, tRPC, armazenamento e endpoints programados fora do diretório estático. |
 
 A validação de tipos, 30 testes automatizados — incluindo teste de interface do badge — e o build de produção foram executados com êxito após esta atualização.
