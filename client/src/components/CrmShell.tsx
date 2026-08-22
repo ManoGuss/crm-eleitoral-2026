@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, LogOut, Menu, Plus, Search, Users, X } from "lucide-react";
+import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -11,6 +11,7 @@ const navigation = [
   { label: "Importações", path: "/importacoes", icon: FileSpreadsheet },
   { label: "Coleta eleitoral", path: "/coleta-eleitoral", icon: Landmark },
   { label: "Base eleitoral", path: "/base-eleitoral", icon: Database },
+  { label: "Revisar perfis", path: "/revisar-perfis", icon: ShieldCheck },
 ];
 
 export function CrmShell({ children, title, subtitle, actions }: { children: React.ReactNode; title: string; subtitle?: string; actions?: React.ReactNode }) {

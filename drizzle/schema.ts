@@ -231,6 +231,10 @@ export const electionCandidates = mysqlTable(
     primaryInstagram: varchar("primaryInstagram", { length: 1200 }),
     secondaryInstagrams: json("secondaryInstagrams").$type<string[]>(),
     instagramVerification: mysqlEnum("instagramVerification", ["Verificado", "Provável — requer revisão", "Não localizado"]).default("Não localizado").notNull(),
+    manualReviewStatus: mysqlEnum("manualReviewStatus", ["pendente", "aprovado", "rejeitado"]).default("pendente").notNull(),
+    manualReviewNote: text("manualReviewNote"),
+    manualReviewedBy: int("manualReviewedBy").references(() => users.id, { onDelete: "set null" }),
+    manualReviewedAt: timestamp("manualReviewedAt"),
     verificationSignals: json("verificationSignals").$type<Array<{ signal: string; source: string; url?: string }>>(),
     sourceRecord: json("sourceRecord").$type<Record<string, string>>().notNull(),
     lastVerifiedAt: timestamp("lastVerifiedAt"),
@@ -242,6 +246,7 @@ export const electionCandidates = mysqlTable(
     index("election_candidates_user_filter_idx").on(table.userId, table.state, table.cargo),
     index("election_candidates_user_party_idx").on(table.userId, table.party),
     index("election_candidates_user_instagram_idx").on(table.userId, table.instagramVerification),
+    index("election_candidates_user_review_idx").on(table.userId, table.instagramVerification, table.manualReviewStatus),
   ]
 );
 

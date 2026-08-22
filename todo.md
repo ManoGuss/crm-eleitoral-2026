@@ -23,3 +23,9 @@
 - [x] Consolidar totais por estado e cargo, cobertura de Instagram e relatório de fontes e limitações técnicas.
 - [x] Disponibilizar a base eleitoral nacional em uma consulta paginada e responsiva, com filtros por UF, cargo e classificação de Instagram.
 - [x] Publicar a versão com rotina incremental e iniciar a verificação programada dos sites declarados em candidaturas.
+- [x] Modelar decisão manual auditável para perfis de Instagram classificados como prováveis.
+- [x] Criar uma fila de revisão rápida para aprovar ou rejeitar perfis prováveis com evidências visíveis.
+- [x] Adicionar ações seguras de contato por Instagram ou WhatsApp usando informações públicas disponíveis.
+- [x] Validar a fila de revisão e as ações de contato em desktop e celular.
+- [x] Cobrir em testes automatizados a fila de revisão e as decisões de aprovação ou rejeição.
+- [x] Confirmar funcionalmente a persistência de decisões de revisão sem alterar a base oficial de produção.

@@ -24,5 +24,10 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Auditoria de Instagram | O painel separa com evidência: 21 perfis verificados, 507 não localizados após consulta e 19.725 pendentes, evitando tratar pendência como ausência de perfil. |
 | Base eleitoral — desktop | A tabela consulta os 20.253 registros, apresenta status, disponibilidade na urna e filtros por UF, cargo e Instagram. |
 | Base eleitoral — celular | A listagem muda para cartões empilhados, preservando filtros, classificação de Instagram e paginação sem corte horizontal. |
+| Revisão manual — interface | A rota protegida `/revisar-perfis` apresenta filtros, evidências, ações de aprovação/rejeição e estado vazio honesto quando não há perfis prováveis. |
+| Contatos públicos | Ações de Instagram e WhatsApp são exibidas somente para URLs HTTPS com hosts permitidos; links demais permanecem ocultos. |
+| Decisão auditável | Teste automatizado confirma a persistência simulada de status, observação, responsável, data e sinal de revisão, sem alterar a base oficial. |
+| Guarda da fila pendente | O procedimento de revisão rejeita decisões para candidaturas que não estejam simultaneamente classificadas como “Provável — requer revisão” e pendentes. |
+| Condição atual dos dados | A coleta corrente não possui perfis prováveis; por isso, a rota apresenta o estado vazio e nenhuma candidatura oficial foi alterada somente para demonstrar o fluxo. |
 
 A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.

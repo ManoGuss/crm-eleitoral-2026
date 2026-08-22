@@ -32,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, setInstagramVerificationTaskForUser } from "../election-db";
+import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, reviewElectionCandidateForUser, setInstagramVerificationTaskForUser } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -385,6 +385,23 @@ export const crmRouter = router({
       if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sua sessão não está disponível para pausar a verificação." });
       return updateHeartbeatJob(taskUid, { enable: false }, sessionToken);
     }),
+    reviewQueue: protectedProcedure.input(z.object({
+      collectionId: z.number().int().positive(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(50).default(12),
+      state: z.string().max(2).optional(),
+      cargo: z.string().max(120).optional(),
+      query: z.string().max(200).optional(),
+    })).query(({ ctx, input }) => listElectionCandidatesForUser(ctx.user.id, { ...input, instagramVerification: "Provável — requer revisão", manualReviewStatus: "pendente" })),
+    reviewCandidate: protectedProcedure.input(z.object({
+      candidateId: z.number().int().positive(),
+      decision: z.enum(["aprovado", "rejeitado"]),
+      note: z.string().max(2000).nullable().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const candidate = await reviewElectionCandidateForUser(ctx.user.id, input.candidateId, input.decision, input.note);
+      if (!candidate) throw new TRPCError({ code: "NOT_FOUND", message: "Candidatura não encontrada." });
+      return candidate;
+    }),
     listCandidates: protectedProcedure.input(z.object({
       collectionId: z.number().int().positive(),
       page: z.number().int().min(1).default(1),
@@ -394,6 +411,7 @@ export const crmRouter = router({
       party: z.string().max(120).optional(),
       city: z.string().max(255).optional(),
       instagramVerification: z.enum(["Verificado", "Provável — requer revisão", "Não localizado"]).optional(),
+      manualReviewStatus: z.enum(["pendente", "aprovado", "rejeitado"]).optional(),
       query: z.string().max(200).optional(),
     })).query(({ ctx, input }) => listElectionCandidatesForUser(ctx.user.id, input)),
   }),

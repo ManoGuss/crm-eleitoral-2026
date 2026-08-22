@@ -1,6 +1,7 @@
 import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { electionCandidates, electionCollections } from "../drizzle/schema";
 import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
+import { buildManualReviewValues } from "./election-review-utils";
 import { getDb } from "./db";
 
 async function requireDb() {
@@ -51,7 +52,7 @@ export async function setInstagramVerificationTaskForUser(userId: number, collec
   return result[0]?.affectedRows === 1;
 }
 
-export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; query?: string }) {
+export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; manualReviewStatus?: "pendente" | "aprovado" | "rejeitado"; query?: string }) {
   const db = await requireDb();
   const conditions = [eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, input.collectionId)];
   if (input.state) conditions.push(eq(electionCandidates.state, input.state));
@@ -59,6 +60,7 @@ export async function listElectionCandidatesForUser(userId: number, input: { col
   if (input.party) conditions.push(eq(electionCandidates.party, input.party));
   if (input.city) conditions.push(eq(electionCandidates.city, input.city));
   if (input.instagramVerification) conditions.push(eq(electionCandidates.instagramVerification, input.instagramVerification as typeof electionCandidates.instagramVerification.enumValues[number]));
+  if (input.manualReviewStatus) conditions.push(eq(electionCandidates.manualReviewStatus, input.manualReviewStatus));
   if (input.query?.trim()) {
     const term = `%${input.query.trim()}%`;
     conditions.push(sql`(${electionCandidates.candidateName} like ${term} OR ${electionCandidates.ballotName} like ${term} OR ${electionCandidates.primaryInstagram} like ${term})`);
@@ -70,6 +72,20 @@ export async function listElectionCandidatesForUser(userId: number, input: { col
     db.select({ total: count() }).from(electionCandidates).where(where),
   ]);
   return { items, total: totalResult[0]?.total ?? 0 };
+}
+
+export async function reviewElectionCandidateForUser(userId: number, candidateId: number, decision: "aprovado" | "rejeitado", note?: string | null, dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  const candidate = (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];
+  if (!candidate) return null;
+  if (candidate.instagramVerification !== "Provável — requer revisão" || candidate.manualReviewStatus !== "pendente") return null;
+  const values = buildManualReviewValues(decision, note, candidate.verificationSignals);
+  await db.update(electionCandidates).set({
+    ...values,
+    manualReviewedBy: userId,
+    manualReviewedAt: new Date(),
+  }).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId)));
+  return (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0] ?? null;
 }
 
 export async function verifyInstagramChunkForCollection(collectionId: number, limit = 64) {
