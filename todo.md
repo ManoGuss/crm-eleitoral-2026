@@ -37,3 +37,9 @@
 - [x] Permitir atualizar a situação e o próximo follow-up diretamente na gestão do lead.
 - [x] Validar marcadores e filtros de acompanhamento em desktop e celular com testes automatizados.
 - [x] Cobrir o contrato protegido de filtro comercial e registro de conversa sem inserir dados de demonstração na base.
+- [x] Modelar favoritos de candidaturas isolados por usuário e vinculados à coleta auditável.
+- [x] Exibir marcadores de prioridade comercial na Base eleitoral quando a candidatura estiver favoritada para prospecção.
+- [x] Adicionar botão e filtro de candidaturas favoritas na Base eleitoral.
+- [x] Validar favoritos e marcadores eleitorais em desktop e celular com testes automatizados.
+- [x] Cobrir a apresentação visual dos marcadores de favoritos para estados sem contato, conversa e follow-up sem criar registros artificiais.
+- [x] Permitir registrar conversa e agendar o próximo follow-up diretamente em candidaturas favoritas.

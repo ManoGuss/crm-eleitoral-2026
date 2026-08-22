@@ -252,6 +252,26 @@ export const electionCandidates = mysqlTable(
   ]
 );
 
+export const electionCandidateFavorites = mysqlTable(
+  "electionCandidateFavorites",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    candidateId: int("candidateId").notNull().references(() => electionCandidates.id, { onDelete: "cascade" }),
+    status: mysqlEnum("status", crmStatuses).default("Novo").notNull(),
+    lastContactAt: timestamp("lastContactAt"),
+    followUpAt: timestamp("followUpAt"),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("election_candidate_favorite_user_candidate_unique").on(table.userId, table.candidateId),
+    index("election_candidate_favorite_user_status_idx").on(table.userId, table.status),
+    index("election_candidate_favorite_user_followup_idx").on(table.userId, table.followUpAt),
+  ]
+);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
@@ -259,3 +279,4 @@ export type Contact = typeof contacts.$inferSelect;
 export type ImportRecord = typeof imports.$inferSelect;
 export type ElectionCollection = typeof electionCollections.$inferSelect;
 export type ElectionCandidate = typeof electionCandidates.$inferSelect;
+export type ElectionCandidateFavorite = typeof electionCandidateFavorites.$inferSelect;

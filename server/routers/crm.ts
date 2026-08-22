@@ -32,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, reviewElectionCandidateForUser, setInstagramVerificationTaskForUser } from "../election-db";
+import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, reviewElectionCandidateForUser, setElectionCandidateFavoriteForUser, setInstagramVerificationTaskForUser, updateElectionCandidateFavoriteForUser } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -413,7 +413,26 @@ export const crmRouter = router({
       city: z.string().max(255).optional(),
       instagramVerification: z.enum(["Verificado", "Provável — requer revisão", "Não localizado"]).optional(),
       manualReviewStatus: z.enum(["pendente", "aprovado", "rejeitado"]).optional(),
+      favoritesOnly: z.boolean().optional(),
+      commercialMarker: z.enum(["sem_contato", "em_conversa", "aguardando_retorno", "negociacao", "follow_up", "proposta", "fechado", "perdido"]).optional(),
       query: z.string().max(200).optional(),
     })).query(({ ctx, input }) => listElectionCandidatesForUser(ctx.user.id, input)),
+    setFavorite: protectedProcedure.input(z.object({ candidateId: z.number().int().positive(), favorite: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const favorite = await setElectionCandidateFavoriteForUser(ctx.user.id, input.candidateId, input.favorite);
+      if (input.favorite && !favorite) throw new TRPCError({ code: "NOT_FOUND", message: "Candidatura não encontrada." });
+      return { favorite };
+    }),
+    updateFavorite: protectedProcedure.input(z.object({
+      candidateId: z.number().int().positive(),
+      status: statusSchema.optional(),
+      lastContactAt: z.number().int().nullable().optional(),
+      followUpAt: z.number().int().nullable().optional(),
+      note: z.string().max(2000).nullable().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const { candidateId, lastContactAt, followUpAt, ...values } = input;
+      const favorite = await updateElectionCandidateFavoriteForUser(ctx.user.id, candidateId, { ...values, ...(lastContactAt !== undefined ? { lastContactAt: asDate(lastContactAt) } : {}), ...(followUpAt !== undefined ? { followUpAt: asDate(followUpAt) } : {}) });
+      if (!favorite) throw new TRPCError({ code: "NOT_FOUND", message: "Favorite a candidatura antes de registrar seu acompanhamento." });
+      return favorite;
+    }),
   }),
 });

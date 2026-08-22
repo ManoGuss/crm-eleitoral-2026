@@ -35,5 +35,8 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Marcadores comerciais | A listagem de leads apresenta filtros rápidos para sem contato, conversa, retorno, negociação, follow-up, proposta, projeto fechado e perda; a prioridade é derivada de status, último contato e próxima ação. |
 | Ação rápida de conversa | O detalhe do lead permite registrar uma conversa realizada, gravando o horário e promovendo automaticamente o status “Novo” para “Abordado”. |
 | Contrato de filtros | A suíte automatizada confirma que o marcador comercial é encaminhado pela rota protegida e que o registro de conversa persiste status e horário no escopo do usuário. |
+| Favoritos eleitorais | A Base eleitoral oferece ação de favoritar e filtro de favoritos, todos isolados pela conta autenticada e sem alteração dos registros oficiais de candidatura. |
+| Acompanhamento de favoritos | Candidaturas favoritada recebem marcador comercial e seletor de status próprios, permitindo acompanhar a prospecção sem criar dados fictícios no cadastro oficial. |
+| Conversa e follow-up | Favoritos permitem registrar a conversa com horário e agendar o próximo follow-up; a remoção de um favorito que já possui acompanhamento pede confirmação, pois elimina somente os dados privados desse usuário. |
 
-A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.
+A validação de tipos, 26 testes automatizados e o build de produção foram executados com êxito após esta atualização.
