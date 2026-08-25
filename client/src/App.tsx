@@ -8,6 +8,7 @@ import Access from "./pages/Access";
 import Dashboard from "./pages/Dashboard";
 import ElectionResearch from "./pages/ElectionResearch";
 import ElectionCandidates from "./pages/ElectionCandidates";
+import ElectionCandidateProfile from "./pages/ElectionCandidateProfile";
 import ProfileReview from "./pages/ProfileReview";
 import ImportHistory from "./pages/ImportHistory";
 import ImportWizard from "./pages/ImportWizard";
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/importacoes"} component={ImportHistory} />
       <Route path={"/coleta-eleitoral"} component={ElectionResearch} />
       <Route path={"/base-eleitoral"} component={ElectionCandidates} />
+      <Route path={"/candidaturas/:id"}>{params => <ElectionCandidateProfile id={Number(params.id)} />}</Route>
       <Route path={"/revisar-perfis"} component={ProfileReview} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

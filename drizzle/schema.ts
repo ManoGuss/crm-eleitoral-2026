@@ -250,6 +250,71 @@ export const electionCandidates = mysqlTable(
   ]
 );
 
+export const electionReviewDecisions = mysqlTable(
+  "electionReviewDecisions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    candidateId: int("candidateId").notNull().references(() => electionCandidates.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    decision: mysqlEnum("decision", ["aprovado", "rejeitado"]).notNull(),
+    previousVerification: varchar("previousVerification", { length: 80 }).notNull(),
+    resultingVerification: varchar("resultingVerification", { length: 80 }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("election_review_decisions_candidate_created_idx").on(table.candidateId, table.createdAt),
+    index("election_review_decisions_user_created_idx").on(table.userId, table.createdAt),
+  ]
+);
+
+export const electionCandidateInteractions = mysqlTable(
+  "electionCandidateInteractions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    candidateId: int("candidateId").notNull().references(() => electionCandidates.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    channel: mysqlEnum("channel", ["instagram", "whatsapp"]).notNull(),
+    outcome: mysqlEnum("outcome", ["iniciada", "enviada", "respondida", "sem_resposta", "sem_interesse", "agendada", "outro"]).default("iniciada").notNull(),
+    note: text("note"),
+    targetUrl: varchar("targetUrl", { length: 1200 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("election_interactions_candidate_created_idx").on(table.candidateId, table.createdAt),
+    index("election_interactions_user_created_idx").on(table.userId, table.createdAt),
+  ]
+);
+
+export const electionInteractionEvents = mysqlTable(
+  "electionInteractionEvents",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    interactionId: int("interactionId").notNull().references(() => electionCandidateInteractions.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    outcome: mysqlEnum("outcome", ["iniciada", "enviada", "respondida", "sem_resposta", "sem_interesse", "agendada", "outro"]).notNull(),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("election_interaction_events_interaction_created_idx").on(table.interactionId, table.createdAt),
+    index("election_interaction_events_user_created_idx").on(table.userId, table.createdAt),
+  ]
+);
+
+export const electionContactPreferences = mysqlTable(
+  "electionContactPreferences",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    whatsappTemplate: text("whatsappTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [uniqueIndex("election_contact_preferences_user_unique").on(table.userId)]
+);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Lead = typeof leads.$inferSelect;

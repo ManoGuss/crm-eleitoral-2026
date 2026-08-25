@@ -29,3 +29,9 @@
 - [x] Validar a fila de revisão e as ações de contato em desktop e celular.
 - [x] Cobrir em testes automatizados a fila de revisão e as decisões de aprovação ou rejeição.
 - [x] Confirmar funcionalmente a persistência de decisões de revisão sem alterar a base oficial de produção.
+- [x] Tornar imutável o histórico de evolução dos resultados de interações por candidatura.
+- [x] Criar filtros de revisão por responsável e uma visualização do histórico de decisões.
+- [x] Registrar datas, canal e resultado das tentativas de contato no perfil da candidatura.
+- [x] Fazer todos os atalhos de WhatsApp usarem a mensagem preenchida e o registro auditável de interação.
+- [x] Cobrir a leitura de eventos imutáveis no perfil da candidatura e a integração do histórico filtrado em testes automatizados.
+- [x] Consolidar a validação controlada de ponta a ponta dos fluxos de filtro, modelo de mensagem, contato e linha do tempo sem enviar mensagens externas.

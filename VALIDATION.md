@@ -29,5 +29,14 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Decisão auditável | Teste automatizado confirma a persistência simulada de status, observação, responsável, data e sinal de revisão, sem alterar a base oficial. |
 | Guarda da fila pendente | O procedimento de revisão rejeita decisões para candidaturas que não estejam simultaneamente classificadas como “Provável — requer revisão” e pendentes. |
 | Condição atual dos dados | A coleta corrente não possui perfis prováveis; por isso, a rota apresenta o estado vazio e nenhuma candidatura oficial foi alterada somente para demonstrar o fluxo. |
+| Histórico e filtro de revisor | A tela de revisão tem abas para fila e histórico; o histórico permite filtrar o responsável por decisões já registradas. |
+| Interações de contato | O perfil da candidatura apresenta uma linha do tempo com data, canal, resultado e observação de cada tentativa registrada. |
+| WhatsApp personalizado | Teste automatizado confirma a substituição segura de marcadores e a abertura apenas de links HTTPS autorizados do WhatsApp. |
+| Eventos de interação | Cada alteração de resultado gera um evento novo; o registro inicial e os eventos posteriores permanecem preservados no histórico. |
+| Atalhos globais | Os botões de WhatsApp na base e no perfil usam o mesmo procedimento protegido para compor a mensagem e registrar a tentativa. |
+| Regressão automatizada | A suíte atual passou com 12 arquivos e 24 testes, além de verificação de tipos e build de produção. |
+| Perfil auditável | Teste de perfil confirma que os eventos retornados são associados à interação correta e preservam a ordem usada na linha do tempo. |
+| API de revisão e contato | Testes de procedimento confirmam o filtro por revisor, a aplicação do escopo da sessão, a preferência, a preparação do WhatsApp e o registro de resultado de interação. |
+| Fluxo controlado de contato | Testes simulados cobrem a preferência persistida, a URL preenchida do WhatsApp, o registro inicial de interação e a criação de eventos posteriores sem envio de mensagens externas. |
 
 A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.

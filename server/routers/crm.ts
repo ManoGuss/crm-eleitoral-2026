@@ -32,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, reviewElectionCandidateForUser, setInstagramVerificationTaskForUser } from "../election-db";
+import { collectOfficial2026ForUser, getContactPreferenceForUser, getElectionCandidateProfileForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, listReviewersForUser, listReviewHistoryForUser, prepareCandidateContactForUser, reviewElectionCandidateForUser, setInstagramVerificationTaskForUser, updateCandidateInteractionForUser, updateContactPreferenceForUser } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -401,6 +401,35 @@ export const crmRouter = router({
       const candidate = await reviewElectionCandidateForUser(ctx.user.id, input.candidateId, input.decision, input.note);
       if (!candidate) throw new TRPCError({ code: "NOT_FOUND", message: "Candidatura não encontrada." });
       return candidate;
+    }),
+    reviewers: protectedProcedure.query(({ ctx }) => listReviewersForUser(ctx.user.id)),
+    reviewHistory: protectedProcedure.input(z.object({
+      collectionId: z.number().int().positive(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(20),
+      reviewerId: z.number().int().positive().optional(),
+      candidateId: z.number().int().positive().optional(),
+    })).query(({ ctx, input }) => listReviewHistoryForUser(ctx.user.id, input)),
+    candidateProfile: protectedProcedure.input(z.object({ candidateId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const profile = await getElectionCandidateProfileForUser(ctx.user.id, input.candidateId);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Candidatura não encontrada." });
+      return profile;
+    }),
+    contactPreference: protectedProcedure.query(({ ctx }) => getContactPreferenceForUser(ctx.user.id)),
+    updateContactPreference: protectedProcedure.input(z.object({ whatsappTemplate: z.string().min(1).max(3000) })).mutation(({ ctx, input }) => updateContactPreferenceForUser(ctx.user.id, input.whatsappTemplate)),
+    prepareContact: protectedProcedure.input(z.object({ candidateId: z.number().int().positive(), channel: z.enum(["instagram", "whatsapp"]) })).mutation(async ({ ctx, input }) => {
+      const contact = await prepareCandidateContactForUser(ctx.user.id, input.candidateId, input.channel);
+      if (!contact) throw new TRPCError({ code: "NOT_FOUND", message: "Canal público de contato não encontrado para esta candidatura." });
+      return contact;
+    }),
+    updateInteraction: protectedProcedure.input(z.object({
+      interactionId: z.number().int().positive(),
+      outcome: z.enum(["iniciada", "enviada", "respondida", "sem_resposta", "sem_interesse", "agendada", "outro"]),
+      note: z.string().max(2000).nullable().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const updated = await updateCandidateInteractionForUser(ctx.user.id, input.interactionId, input);
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Interação não encontrada." });
+      return { success: true };
     }),
     listCandidates: protectedProcedure.input(z.object({
       collectionId: z.number().int().positive(),

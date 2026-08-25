@@ -1,7 +1,8 @@
 import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
-import { electionCandidates, electionCollections } from "../drizzle/schema";
+import { electionCandidateInteractions, electionCandidates, electionCollections, electionContactPreferences, electionInteractionEvents, electionReviewDecisions, users } from "../drizzle/schema";
 import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
 import { buildManualReviewValues } from "./election-review-utils";
+import { buildPublicWhatsAppUrl, DEFAULT_WHATSAPP_TEMPLATE, renderWhatsAppTemplate } from "./election-contact-utils";
 import { getDb } from "./db";
 
 async function requireDb() {
@@ -22,6 +23,24 @@ function normalizeInstagramUrl(value: string) {
   } catch {
     return null;
   }
+}
+
+function safePublicContact(value: string, allowedHosts: string[]) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    const host = url.hostname.toLowerCase();
+    return allowedHosts.some(allowed => host === allowed || host.endsWith(`.${allowed}`)) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function candidatePublicContacts(candidate: { primaryInstagram: string | null; declaredProfiles: string[] | null }) {
+  const profiles = candidate.declaredProfiles ?? [];
+  const instagram = safePublicContact(candidate.primaryInstagram ?? "", ["instagram.com"]) || profiles.map(value => safePublicContact(value, ["instagram.com"])).find(Boolean) || null;
+  const whatsapp = profiles.map(value => safePublicContact(value, ["wa.me", "whatsapp.com"])).find(Boolean) || null;
+  return { instagram, whatsapp };
 }
 
 export async function listElectionCollectionsForUser(userId: number) {
@@ -80,12 +99,98 @@ export async function reviewElectionCandidateForUser(userId: number, candidateId
   if (!candidate) return null;
   if (candidate.instagramVerification !== "Provável — requer revisão" || candidate.manualReviewStatus !== "pendente") return null;
   const values = buildManualReviewValues(decision, note, candidate.verificationSignals);
+  await db.insert(electionReviewDecisions).values({
+    candidateId,
+    userId,
+    decision,
+    previousVerification: candidate.instagramVerification,
+    resultingVerification: values.instagramVerification,
+    note: values.manualReviewNote,
+  });
   await db.update(electionCandidates).set({
     ...values,
     manualReviewedBy: userId,
     manualReviewedAt: new Date(),
   }).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId)));
   return (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0] ?? null;
+}
+
+export async function listReviewersForUser(userId: number) {
+  const db = await requireDb();
+  return db.select({ id: users.id, name: users.name, email: users.email }).from(electionReviewDecisions)
+    .innerJoin(users, eq(electionReviewDecisions.userId, users.id))
+    .where(eq(electionReviewDecisions.userId, userId)).groupBy(users.id, users.name, users.email);
+}
+
+export async function listReviewHistoryForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; reviewerId?: number; candidateId?: number }) {
+  const db = await requireDb();
+  const conditions = [eq(electionReviewDecisions.userId, userId), eq(electionCandidates.collectionId, input.collectionId)];
+  if (input.reviewerId) conditions.push(eq(electionReviewDecisions.userId, input.reviewerId));
+  if (input.candidateId) conditions.push(eq(electionReviewDecisions.candidateId, input.candidateId));
+  const where = and(...conditions);
+  const offset = (input.page - 1) * input.pageSize;
+  const [items, totalResult] = await Promise.all([
+    db.select({ id: electionReviewDecisions.id, candidateId: electionReviewDecisions.candidateId, decision: electionReviewDecisions.decision, previousVerification: electionReviewDecisions.previousVerification, resultingVerification: electionReviewDecisions.resultingVerification, note: electionReviewDecisions.note, createdAt: electionReviewDecisions.createdAt, candidateName: electionCandidates.candidateName, ballotName: electionCandidates.ballotName, cargo: electionCandidates.cargo, state: electionCandidates.state, reviewerName: users.name, reviewerEmail: users.email }).from(electionReviewDecisions)
+      .innerJoin(electionCandidates, eq(electionReviewDecisions.candidateId, electionCandidates.id)).leftJoin(users, eq(electionReviewDecisions.userId, users.id)).where(where).orderBy(desc(electionReviewDecisions.createdAt)).limit(input.pageSize).offset(offset),
+    db.select({ total: count() }).from(electionReviewDecisions).innerJoin(electionCandidates, eq(electionReviewDecisions.candidateId, electionCandidates.id)).where(where),
+  ]);
+  return { items, total: Number(totalResult[0]?.total ?? 0) };
+}
+
+export async function getElectionCandidateProfileForUser(userId: number, candidateId: number, dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  const candidate = (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];
+  if (!candidate) return null;
+  const [reviews, interactions, interactionEvents] = await Promise.all([
+    db.select({ id: electionReviewDecisions.id, decision: electionReviewDecisions.decision, note: electionReviewDecisions.note, createdAt: electionReviewDecisions.createdAt, reviewerName: users.name, reviewerEmail: users.email }).from(electionReviewDecisions).leftJoin(users, eq(electionReviewDecisions.userId, users.id)).where(and(eq(electionReviewDecisions.candidateId, candidateId), eq(electionReviewDecisions.userId, userId))).orderBy(desc(electionReviewDecisions.createdAt)),
+    db.select().from(electionCandidateInteractions).where(and(eq(electionCandidateInteractions.candidateId, candidateId), eq(electionCandidateInteractions.userId, userId))).orderBy(desc(electionCandidateInteractions.createdAt)),
+    db.select().from(electionInteractionEvents).where(eq(electionInteractionEvents.userId, userId)).orderBy(desc(electionInteractionEvents.createdAt)),
+  ]);
+  const typedInteractions = interactions as Array<{ id: number; [key: string]: unknown }>;
+  const typedEvents = interactionEvents as Array<{ interactionId: number; [key: string]: unknown }>;
+  const interactionIds = new Set(typedInteractions.map(interaction => interaction.id));
+  return { candidate, reviews, interactions: typedInteractions.map(interaction => ({ ...interaction, events: typedEvents.filter(event => interactionIds.has(event.interactionId) && event.interactionId === interaction.id) })) };
+}
+
+export async function getContactPreferenceForUser(userId: number, dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  const preference = (await db.select().from(electionContactPreferences).where(eq(electionContactPreferences.userId, userId)).limit(1))[0];
+  if (preference) return preference;
+  await db.insert(electionContactPreferences).values({ userId, whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE });
+  return (await db.select().from(electionContactPreferences).where(eq(electionContactPreferences.userId, userId)).limit(1))[0]!;
+}
+
+export async function updateContactPreferenceForUser(userId: number, whatsappTemplate: string, dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  await db.insert(electionContactPreferences).values({ userId, whatsappTemplate }).onDuplicateKeyUpdate({ set: { whatsappTemplate } });
+  return getContactPreferenceForUser(userId, db);
+}
+
+export async function prepareCandidateContactForUser(userId: number, candidateId: number, channel: "instagram" | "whatsapp", dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  const candidate = (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];
+  if (!candidate) return null;
+  const contacts = candidatePublicContacts(candidate);
+  const target = contacts[channel];
+  if (!target) return null;
+  const preference = await getContactPreferenceForUser(userId, db);
+  const reviewer = (await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1))[0];
+  const preparedText = channel === "whatsapp" ? renderWhatsAppTemplate(preference.whatsappTemplate, candidate, reviewer?.name) : null;
+  const preparedUrl = channel === "whatsapp" && preparedText ? buildPublicWhatsAppUrl(target, preparedText) : target;
+  if (!preparedUrl) return null;
+  const initialNote = channel === "whatsapp" ? "Mensagem padrão preparada para contato." : "Contato por Instagram iniciado.";
+  const created = await db.insert(electionCandidateInteractions).values({ candidateId, userId, channel, outcome: "iniciada", targetUrl: target, note: initialNote });
+  const interactionId = Number(created[0].insertId);
+  await db.insert(electionInteractionEvents).values({ interactionId, userId, outcome: "iniciada", note: initialNote });
+  return { url: preparedUrl, targetUrl: target, channel, preparedText };
+}
+
+export async function updateCandidateInteractionForUser(userId: number, interactionId: number, input: { outcome: "iniciada" | "enviada" | "respondida" | "sem_resposta" | "sem_interesse" | "agendada" | "outro"; note?: string | null }, dbOverride?: any) {
+  const db = dbOverride ?? await requireDb();
+  const interaction = (await db.select({ id: electionCandidateInteractions.id }).from(electionCandidateInteractions).where(and(eq(electionCandidateInteractions.id, interactionId), eq(electionCandidateInteractions.userId, userId))).limit(1))[0];
+  if (!interaction) return false;
+  await db.insert(electionInteractionEvents).values({ interactionId, userId, outcome: input.outcome, note: input.note?.trim() || null });
+  return true;
 }
 
 export async function verifyInstagramChunkForCollection(collectionId: number, limit = 64) {
