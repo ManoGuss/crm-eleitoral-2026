@@ -228,6 +228,8 @@ export const electionCandidates = mysqlTable(
     ballotAvailability: mysqlEnum("ballotAvailability", ["Sim", "Não", "Em análise"]).default("Em análise").notNull(),
     city: varchar("city", { length: 255 }),
     declaredProfiles: json("declaredProfiles").$type<string[]>(),
+    publicContacts: json("publicContacts").$type<Array<{ channel: "instagram" | "whatsapp" | "email" | "phone"; value: string; source: string }>>(),
+    contactsVerifiedAt: timestamp("contactsVerifiedAt"),
     primaryInstagram: varchar("primaryInstagram", { length: 1200 }),
     secondaryInstagrams: json("secondaryInstagrams").$type<string[]>(),
     instagramVerification: mysqlEnum("instagramVerification", ["Verificado", "Provável — requer revisão", "Não localizado"]).default("Não localizado").notNull(),
@@ -313,6 +315,26 @@ export const electionContactPreferences = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [uniqueIndex("election_contact_preferences_user_unique").on(table.userId)]
+);
+
+export const electionCandidateFavorites = mysqlTable(
+  "electionCandidateFavorites",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    candidateId: int("candidateId").notNull().references(() => electionCandidates.id, { onDelete: "cascade" }),
+    status: mysqlEnum("status", crmStatuses).default("Novo").notNull(),
+    lastContactAt: timestamp("lastContactAt"),
+    followUpAt: timestamp("followUpAt"),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("election_candidate_favorite_user_candidate_unique").on(table.userId, table.candidateId),
+    index("election_candidate_favorite_user_status_idx").on(table.userId, table.status),
+    index("election_candidate_favorite_user_followup_idx").on(table.userId, table.followUpAt),
+  ]
 );
 
 export type User = typeof users.$inferSelect;

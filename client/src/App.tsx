@@ -4,7 +4,6 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Access from "./pages/Access";
 import Dashboard from "./pages/Dashboard";
 import ElectionResearch from "./pages/ElectionResearch";
 import ElectionCandidates from "./pages/ElectionCandidates";
@@ -19,7 +18,7 @@ function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/acesso"} component={Access} />
+      <Route path={"/acesso"} component={Dashboard} />
       <Route path={"/"} component={Dashboard} />
       <Route path={"/leads"} component={Leads} />
       <Route path={"/leads/:id"}>{params => <LeadDetails id={Number(params.id)} />}</Route>

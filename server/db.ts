@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   activities,
@@ -66,6 +66,29 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export function selectPersonalWorkspaceUser<T>(admins: T[], recentUsers: T[]) {
+  return admins[0] ?? recentUsers[0];
+}
+
+export async function getPersonalOwnerUser() {
+  const db = await getDb();
+  if (!db) return undefined;
+  if (ENV.ownerOpenId) {
+    const existing = await getUserByOpenId(ENV.ownerOpenId);
+    if (existing) return existing;
+    await upsertUser({ openId: ENV.ownerOpenId, name: ENV.ownerName, loginMethod: "acesso_pessoal", role: "admin" });
+    return getUserByOpenId(ENV.ownerOpenId);
+  }
+
+  // No deploy pessoal publicado, a variável do proprietário pode não estar
+  // exposta ao runtime. Nesse caso, usa-se o último espaço pessoal registrado,
+  // com preferência por um administrador, para que as consultas protegidas não
+  // fiquem sem contexto e não retornem 401 para a interface estática.
+  const admins = await db.select().from(users).where(eq(users.role, "admin")).orderBy(desc(users.lastSignedIn), desc(users.id)).limit(1);
+  const recentUsers = await db.select().from(users).orderBy(desc(users.lastSignedIn), desc(users.id)).limit(1);
+  return selectPersonalWorkspaceUser(admins, recentUsers);
+}
+
 export async function listFieldDefinitions(userId: number) {
   const db = await requireDb();
   return db.select().from(fieldDefinitions).where(eq(fieldDefinitions.userId, userId)).orderBy(fieldDefinitions.columnOrder, fieldDefinitions.id);
@@ -96,6 +119,7 @@ type LeadFilters = {
   city?: string;
   sourceImportId?: number;
   followUp?: "overdue" | "upcoming";
+  commercialMarker?: "sem_contato" | "em_conversa" | "aguardando_retorno" | "negociacao" | "follow_up" | "proposta" | "fechado" | "perdido";
 };
 
 export async function listLeadsForUser(userId: number, filters: LeadFilters) {
@@ -105,6 +129,14 @@ export async function listLeadsForUser(userId: number, filters: LeadFilters) {
   if (filters.sourceImportId) conditions.push(eq(leads.sourceImportId, filters.sourceImportId));
   if (filters.followUp === "overdue") conditions.push(sql`${leads.followUpAt} < now()`);
   if (filters.followUp === "upcoming") conditions.push(sql`${leads.followUpAt} >= now()`);
+  if (filters.commercialMarker === "sem_contato") conditions.push(and(eq(leads.status, "Novo"), isNull(leads.lastContactAt))!);
+  if (filters.commercialMarker === "em_conversa") conditions.push(or(inArray(leads.status, ["Abordado", "Respondeu"]), isNotNull(leads.lastContactAt))!);
+  if (filters.commercialMarker === "aguardando_retorno") conditions.push(eq(leads.status, "Não respondeu"));
+  if (filters.commercialMarker === "negociacao") conditions.push(eq(leads.status, "Interessado"));
+  if (filters.commercialMarker === "follow_up") conditions.push(or(eq(leads.status, "Follow-up"), and(isNotNull(leads.followUpAt), notInArray(leads.status, ["Fechado", "Perdido"])))!);
+  if (filters.commercialMarker === "proposta") conditions.push(eq(leads.status, "Proposta enviada"));
+  if (filters.commercialMarker === "fechado") conditions.push(eq(leads.status, "Fechado"));
+  if (filters.commercialMarker === "perdido") conditions.push(eq(leads.status, "Perdido"));
   if (filters.query?.trim()) {
     const term = `%${filters.query.trim()}%`;
     conditions.push(sql`(cast(${leads.customFields} as char) like ${term} OR ${leads.description} like ${term})`);

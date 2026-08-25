@@ -1,7 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
-import { useState } from "react";
+import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, Menu, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 
 const navigation = [
@@ -15,12 +14,8 @@ const navigation = [
 ];
 
 export function CrmShell({ children, title, subtitle, actions }: { children: React.ReactNode; title: string; subtitle?: string; actions?: React.ReactNode }) {
-  const { user, loading, logout } = useAuth({ redirectOnUnauthenticated: true, redirectPath: "/acesso" });
   const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  if (loading) return <div className="grid min-h-screen place-items-center bg-[#061329] text-cyan-100"><div className="h-9 w-9 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-300" /></div>;
-  if (!user) return null;
   const go = (path: string) => { setLocation(path); setMobileMenuOpen(false); };
 
   return (
@@ -38,8 +33,7 @@ export function CrmShell({ children, title, subtitle, actions }: { children: Rea
           })}
         </nav>
         <div className="mt-auto rounded-2xl border border-white/8 bg-white/[0.035] p-3">
-          <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-300 text-xs font-bold text-slate-950">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-100">{user.name || "Sua conta"}</p><p className="truncate text-xs text-slate-500">{user.email || "Acesso protegido"}</p></div></div>
-          <button onClick={() => logout()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-400 transition hover:bg-white/[0.05] hover:text-rose-200"><LogOut className="h-3.5 w-3.5" /> Encerrar sessão</button>
+          <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-300 text-xs font-bold text-slate-950">E</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-100">Espaço pessoal</p><p className="truncate text-xs text-slate-500">Acesso direto</p></div></div>
         </div>
       </aside>
       <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-white/8 bg-[#061329]/78 px-4 backdrop-blur-xl lg:ml-[252px] lg:px-8">

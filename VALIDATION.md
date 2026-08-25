@@ -34,9 +34,21 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | WhatsApp personalizado | Teste automatizado confirma a substituição segura de marcadores e a abertura apenas de links HTTPS autorizados do WhatsApp. |
 | Eventos de interação | Cada alteração de resultado gera um evento novo; o registro inicial e os eventos posteriores permanecem preservados no histórico. |
 | Atalhos globais | Os botões de WhatsApp na base e no perfil usam o mesmo procedimento protegido para compor a mensagem e registrar a tentativa. |
-| Regressão automatizada | A suíte atual passou com 12 arquivos e 24 testes, além de verificação de tipos e build de produção. |
+| Regressão automatizada | A suíte integrada passou com 25 arquivos e 51 testes, além de verificação de tipos e build de produção. |
 | Perfil auditável | Teste de perfil confirma que os eventos retornados são associados à interação correta e preservam a ordem usada na linha do tempo. |
 | API de revisão e contato | Testes de procedimento confirmam o filtro por revisor, a aplicação do escopo da sessão, a preferência, a preparação do WhatsApp e o registro de resultado de interação. |
 | Fluxo controlado de contato | Testes simulados cobrem a preferência persistida, a URL preenchida do WhatsApp, o registro inicial de interação e a criação de eventos posteriores sem envio de mensagens externas. |
 
-A validação de tipos, os nove testes automatizados e o build de produção foram executados com êxito após esta atualização.
+## Consolidação e validação final
+
+| Área verificada | Resultado observado |
+|---|---|
+| Integração de versões | As mudanças locais de revisão, contatos auditáveis e WhatsApp foram conciliadas com os recursos remotos de contatos públicos e acompanhamento comercial, preservando escopo por usuário. |
+| Banco de dados | Foram confirmadas as tabelas de decisões, interações, eventos imutáveis, preferências e favoritos, além das colunas de contatos públicos da candidatura. |
+| Filtro por revisor e histórico | Os testes de procedimento cobrem o histórico paginado, o filtro por revisor e a aplicação do `userId` da sessão. |
+| Modelo e preparo de contato | Os testes controlados cobrem a preferência persistida, interpolação dos marcadores, URL HTTPS do WhatsApp e criação da interação/evento inicial; não foi enviada nenhuma mensagem. |
+| Atualização da linha do tempo | Os testes confirmam que a atualização de resultado acrescenta um evento e o perfil associa cada evento à interação correta, sem reescrever os fatos anteriores. |
+| Interface desktop | As rotas `/base-eleitoral`, `/revisar-perfis` e `/candidaturas/1` renderizaram com filtros, abas, estado vazio honesto, perfil auditável e controles de contato. |
+| Interface móvel | As rotas `/revisar-perfis` e `/candidaturas/1` mantiveram hierarquia, controles e conteúdo sem corte horizontal em 375 px. |
+
+Em 25/08/2026, foram executados com êxito `pnpm test` (25 arquivos, 51 testes), `pnpm check` e `pnpm build`. A validação visual foi feita sem acionar canais externos; os controles de contato permanecem restritos a URLs públicas HTTPS autorizadas e não realizam disparo automático.

@@ -1,5 +1,6 @@
-import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
-import { electionCandidateInteractions, electionCandidates, electionCollections, electionContactPreferences, electionInteractionEvents, electionReviewDecisions, users } from "../drizzle/schema";
+import { and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
+import { electionCandidateFavorites, electionCandidateInteractions, electionCandidates, electionCollections, electionContactPreferences, electionInteractionEvents, electionReviewDecisions, users } from "../drizzle/schema";
+import type { CommercialMarker } from "../shared/commercial";
 import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
 import { buildManualReviewValues } from "./election-review-utils";
 import { buildPublicWhatsAppUrl, DEFAULT_WHATSAPP_TEMPLATE, renderWhatsAppTemplate } from "./election-contact-utils";
@@ -36,10 +37,11 @@ function safePublicContact(value: string, allowedHosts: string[]) {
   }
 }
 
-function candidatePublicContacts(candidate: { primaryInstagram: string | null; declaredProfiles: string[] | null }) {
+function candidatePublicContacts(candidate: { primaryInstagram: string | null; declaredProfiles: string[] | null; publicContacts?: Array<{ channel: "instagram" | "whatsapp" | "email" | "phone"; value: string; source: string }> | null }) {
   const profiles = candidate.declaredProfiles ?? [];
-  const instagram = safePublicContact(candidate.primaryInstagram ?? "", ["instagram.com"]) || profiles.map(value => safePublicContact(value, ["instagram.com"])).find(Boolean) || null;
-  const whatsapp = profiles.map(value => safePublicContact(value, ["wa.me", "whatsapp.com"])).find(Boolean) || null;
+  const publicContacts = candidate.publicContacts ?? [];
+  const instagram = publicContacts.filter(contact => contact.channel === "instagram").map(contact => safePublicContact(contact.value, ["instagram.com"])).find(Boolean) || safePublicContact(candidate.primaryInstagram ?? "", ["instagram.com"]) || profiles.map(value => safePublicContact(value, ["instagram.com"])).find(Boolean) || null;
+  const whatsapp = publicContacts.filter(contact => contact.channel === "whatsapp").map(contact => safePublicContact(contact.value, ["wa.me", "whatsapp.com"])).find(Boolean) || profiles.map(value => safePublicContact(value, ["wa.me", "whatsapp.com"])).find(Boolean) || null;
   return { instagram, whatsapp };
 }
 
@@ -71,7 +73,7 @@ export async function setInstagramVerificationTaskForUser(userId: number, collec
   return result[0]?.affectedRows === 1;
 }
 
-export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; manualReviewStatus?: "pendente" | "aprovado" | "rejeitado"; query?: string }) {
+export async function listElectionCandidatesForUser(userId: number, input: { collectionId: number; page: number; pageSize: number; state?: string; cargo?: string; party?: string; city?: string; instagramVerification?: string; manualReviewStatus?: "pendente" | "aprovado" | "rejeitado"; favoritesOnly?: boolean; commercialMarker?: CommercialMarker; query?: string }) {
   const db = await requireDb();
   const conditions = [eq(electionCandidates.userId, userId), eq(electionCandidates.collectionId, input.collectionId)];
   if (input.state) conditions.push(eq(electionCandidates.state, input.state));
@@ -80,17 +82,42 @@ export async function listElectionCandidatesForUser(userId: number, input: { col
   if (input.city) conditions.push(eq(electionCandidates.city, input.city));
   if (input.instagramVerification) conditions.push(eq(electionCandidates.instagramVerification, input.instagramVerification as typeof electionCandidates.instagramVerification.enumValues[number]));
   if (input.manualReviewStatus) conditions.push(eq(electionCandidates.manualReviewStatus, input.manualReviewStatus));
+  if (input.favoritesOnly) conditions.push(isNotNull(electionCandidateFavorites.id));
+  if (input.commercialMarker === "sem_contato") conditions.push(and(eq(electionCandidateFavorites.status, "Novo"), isNull(electionCandidateFavorites.lastContactAt))!);
+  if (input.commercialMarker === "em_conversa") conditions.push(or(inArray(electionCandidateFavorites.status, ["Abordado", "Respondeu"]), isNotNull(electionCandidateFavorites.lastContactAt))!);
+  if (input.commercialMarker === "aguardando_retorno") conditions.push(eq(electionCandidateFavorites.status, "Não respondeu"));
+  if (input.commercialMarker === "negociacao") conditions.push(eq(electionCandidateFavorites.status, "Interessado"));
+  if (input.commercialMarker === "follow_up") conditions.push(or(eq(electionCandidateFavorites.status, "Follow-up"), and(isNotNull(electionCandidateFavorites.followUpAt), notInArray(electionCandidateFavorites.status, ["Fechado", "Perdido"])))!);
+  if (input.commercialMarker === "proposta") conditions.push(eq(electionCandidateFavorites.status, "Proposta enviada"));
+  if (input.commercialMarker === "fechado") conditions.push(eq(electionCandidateFavorites.status, "Fechado"));
+  if (input.commercialMarker === "perdido") conditions.push(eq(electionCandidateFavorites.status, "Perdido"));
   if (input.query?.trim()) {
     const term = `%${input.query.trim()}%`;
     conditions.push(sql`(${electionCandidates.candidateName} like ${term} OR ${electionCandidates.ballotName} like ${term} OR ${electionCandidates.primaryInstagram} like ${term})`);
   }
   const where = and(...conditions);
   const offset = (input.page - 1) * input.pageSize;
-  const [items, totalResult] = await Promise.all([
-    db.select().from(electionCandidates).where(where).orderBy(electionCandidates.state, electionCandidates.cargo, electionCandidates.candidateName).limit(input.pageSize).offset(offset),
-    db.select({ total: count() }).from(electionCandidates).where(where),
+  const [rows, totalResult] = await Promise.all([
+    db.select({ candidate: electionCandidates, favorite: electionCandidateFavorites }).from(electionCandidates).leftJoin(electionCandidateFavorites, and(eq(electionCandidateFavorites.candidateId, electionCandidates.id), eq(electionCandidateFavorites.userId, userId))).where(where).orderBy(electionCandidateFavorites.createdAt, electionCandidates.state, electionCandidates.cargo, electionCandidates.candidateName).limit(input.pageSize).offset(offset),
+    db.select({ total: count() }).from(electionCandidates).leftJoin(electionCandidateFavorites, and(eq(electionCandidateFavorites.candidateId, electionCandidates.id), eq(electionCandidateFavorites.userId, userId))).where(where),
   ]);
-  return { items, total: totalResult[0]?.total ?? 0 };
+  return { items: rows.map(row => ({ ...row.candidate, favorite: row.favorite })), total: totalResult[0]?.total ?? 0 };
+}
+
+export async function setElectionCandidateFavoriteForUser(userId: number, candidateId: number, favorite: boolean) {
+  const db = await requireDb();
+  const candidate = (await db.select({ id: electionCandidates.id }).from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];
+  if (!candidate) return null;
+  if (favorite) await db.insert(electionCandidateFavorites).values({ userId, candidateId, status: "Novo" }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+  else await db.delete(electionCandidateFavorites).where(and(eq(electionCandidateFavorites.userId, userId), eq(electionCandidateFavorites.candidateId, candidateId)));
+  return favorite ? (await db.select().from(electionCandidateFavorites).where(and(eq(electionCandidateFavorites.userId, userId), eq(electionCandidateFavorites.candidateId, candidateId))).limit(1))[0] ?? null : null;
+}
+
+export async function updateElectionCandidateFavoriteForUser(userId: number, candidateId: number, values: { status?: typeof electionCandidateFavorites.status.enumValues[number]; lastContactAt?: Date | null; followUpAt?: Date | null; note?: string | null }) {
+  const db = await requireDb();
+  const result = await db.update(electionCandidateFavorites).set(values).where(and(eq(electionCandidateFavorites.userId, userId), eq(electionCandidateFavorites.candidateId, candidateId)));
+  if (!result[0]?.affectedRows) return null;
+  return (await db.select().from(electionCandidateFavorites).where(and(eq(electionCandidateFavorites.userId, userId), eq(electionCandidateFavorites.candidateId, candidateId))).limit(1))[0] ?? null;
 }
 
 export async function reviewElectionCandidateForUser(userId: number, candidateId: number, decision: "aprovado" | "rejeitado", note?: string | null, dbOverride?: any) {

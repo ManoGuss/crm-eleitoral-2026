@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "20ec6566-bd62-4709-8c7b-926d9fe999a4",
-  "prevId": "9d35416d-e159-4453-af61-18dff6ebc3eb",
+  "id": "d26953bc-cecf-4aac-bf42-044684d99e23",
+  "prevId": "4e83d5ab-7046-403f-8234-71034bc34723",
   "tables": {
     "activities": {
       "name": "activities",
@@ -252,8 +252,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "electionCandidateInteractions": {
-      "name": "electionCandidateInteractions",
+    "electionCandidateFavorites": {
+      "name": "electionCandidateFavorites",
       "columns": {
         "id": {
           "name": "id",
@@ -262,13 +262,6 @@
           "notNull": true,
           "autoincrement": true
         },
-        "candidateId": {
-          "name": "candidateId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "userId": {
           "name": "userId",
           "type": "int",
@@ -276,31 +269,38 @@
           "notNull": true,
           "autoincrement": false
         },
-        "channel": {
-          "name": "channel",
-          "type": "enum('instagram','whatsapp')",
+        "candidateId": {
+          "name": "candidateId",
+          "type": "int",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "outcome": {
-          "name": "outcome",
-          "type": "enum('iniciada','enviada','respondida','sem_resposta','sem_interesse','agendada','outro')",
+        "status": {
+          "name": "status",
+          "type": "enum('Novo','Abordado','Respondeu','Não respondeu','Interessado','Follow-up','Proposta enviada','Fechado','Perdido')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'iniciada'"
+          "default": "'Novo'"
         },
-        "note": {
-          "name": "note",
-          "type": "text",
+        "lastContactAt": {
+          "name": "lastContactAt",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "targetUrl": {
-          "name": "targetUrl",
-          "type": "varchar(1200)",
+        "followUpAt": {
+          "name": "followUpAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -324,40 +324,35 @@
         }
       },
       "indexes": {
-        "election_interactions_candidate_created_idx": {
-          "name": "election_interactions_candidate_created_idx",
+        "election_candidate_favorite_user_candidate_unique": {
+          "name": "election_candidate_favorite_user_candidate_unique",
           "columns": [
-            "candidateId",
-            "createdAt"
+            "userId",
+            "candidateId"
+          ],
+          "isUnique": true
+        },
+        "election_candidate_favorite_user_status_idx": {
+          "name": "election_candidate_favorite_user_status_idx",
+          "columns": [
+            "userId",
+            "status"
           ],
           "isUnique": false
         },
-        "election_interactions_user_created_idx": {
-          "name": "election_interactions_user_created_idx",
+        "election_candidate_favorite_user_followup_idx": {
+          "name": "election_candidate_favorite_user_followup_idx",
           "columns": [
             "userId",
-            "createdAt"
+            "followUpAt"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {
-        "electionCandidateInteractions_candidateId_electionCandidates_id_fk": {
-          "name": "electionCandidateInteractions_candidateId_electionCandidates_id_fk",
-          "tableFrom": "electionCandidateInteractions",
-          "tableTo": "electionCandidates",
-          "columnsFrom": [
-            "candidateId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "electionCandidateInteractions_userId_users_id_fk": {
-          "name": "electionCandidateInteractions_userId_users_id_fk",
-          "tableFrom": "electionCandidateInteractions",
+        "electionCandidateFavorites_userId_users_id_fk": {
+          "name": "electionCandidateFavorites_userId_users_id_fk",
+          "tableFrom": "electionCandidateFavorites",
           "tableTo": "users",
           "columnsFrom": [
             "userId"
@@ -367,11 +362,24 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "electionCandidateFavorites_candidateId_electionCandidates_id_fk": {
+          "name": "electionCandidateFavorites_candidateId_electionCandidates_id_fk",
+          "tableFrom": "electionCandidateFavorites",
+          "tableTo": "electionCandidates",
+          "columnsFrom": [
+            "candidateId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "electionCandidateInteractions_id": {
-          "name": "electionCandidateInteractions_id",
+        "electionCandidateFavorites_id": {
+          "name": "electionCandidateFavorites_id",
           "columns": [
             "id"
           ]
@@ -489,6 +497,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "publicContacts": {
+          "name": "publicContacts",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "primaryInstagram": {
           "name": "primaryInstagram",
           "type": "varchar(1200)",
@@ -556,6 +571,13 @@
         },
         "lastVerifiedAt": {
           "name": "lastVerifiedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contactsVerifiedAt": {
+          "name": "contactsVerifiedAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
@@ -865,305 +887,6 @@
       "compositePrimaryKeys": {
         "electionCollections_id": {
           "name": "electionCollections_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "electionContactPreferences": {
-      "name": "electionContactPreferences",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "whatsappTemplate": {
-          "name": "whatsappTemplate",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "election_contact_preferences_user_unique": {
-          "name": "election_contact_preferences_user_unique",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "electionContactPreferences_userId_users_id_fk": {
-          "name": "electionContactPreferences_userId_users_id_fk",
-          "tableFrom": "electionContactPreferences",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "electionContactPreferences_id": {
-          "name": "electionContactPreferences_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "electionInteractionEvents": {
-      "name": "electionInteractionEvents",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "interactionId": {
-          "name": "interactionId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "enum('iniciada','enviada','respondida','sem_resposta','sem_interesse','agendada','outro')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "election_interaction_events_interaction_created_idx": {
-          "name": "election_interaction_events_interaction_created_idx",
-          "columns": [
-            "interactionId",
-            "createdAt"
-          ],
-          "isUnique": false
-        },
-        "election_interaction_events_user_created_idx": {
-          "name": "election_interaction_events_user_created_idx",
-          "columns": [
-            "userId",
-            "createdAt"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "electionInteractionEvents_interactionId_electionCandidateInteractions_id_fk": {
-          "name": "electionInteractionEvents_interactionId_electionCandidateInteractions_id_fk",
-          "tableFrom": "electionInteractionEvents",
-          "tableTo": "electionCandidateInteractions",
-          "columnsFrom": [
-            "interactionId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "electionInteractionEvents_userId_users_id_fk": {
-          "name": "electionInteractionEvents_userId_users_id_fk",
-          "tableFrom": "electionInteractionEvents",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "electionInteractionEvents_id": {
-          "name": "electionInteractionEvents_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "electionReviewDecisions": {
-      "name": "electionReviewDecisions",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "candidateId": {
-          "name": "candidateId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "decision": {
-          "name": "decision",
-          "type": "enum('aprovado','rejeitado')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "previousVerification": {
-          "name": "previousVerification",
-          "type": "varchar(80)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "resultingVerification": {
-          "name": "resultingVerification",
-          "type": "varchar(80)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "election_review_decisions_candidate_created_idx": {
-          "name": "election_review_decisions_candidate_created_idx",
-          "columns": [
-            "candidateId",
-            "createdAt"
-          ],
-          "isUnique": false
-        },
-        "election_review_decisions_user_created_idx": {
-          "name": "election_review_decisions_user_created_idx",
-          "columns": [
-            "userId",
-            "createdAt"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "electionReviewDecisions_candidateId_electionCandidates_id_fk": {
-          "name": "electionReviewDecisions_candidateId_electionCandidates_id_fk",
-          "tableFrom": "electionReviewDecisions",
-          "tableTo": "electionCandidates",
-          "columnsFrom": [
-            "candidateId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "electionReviewDecisions_userId_users_id_fk": {
-          "name": "electionReviewDecisions_userId_users_id_fk",
-          "tableFrom": "electionReviewDecisions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "electionReviewDecisions_id": {
-          "name": "electionReviewDecisions_id",
           "columns": [
             "id"
           ]
