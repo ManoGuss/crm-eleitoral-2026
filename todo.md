@@ -43,3 +43,11 @@
 - [x] Cobrir em teste de interface o clique de favoritar e desfavoritar no perfil da candidatura.
 - [x] Comprovar em ambiente controlado a sequência favorito ativo, painel disponível e salvamento do acompanhamento sem persistir dados reais.
 - [x] Cobrir em teste de interface a remoção de favorito no perfil da candidatura.
+- [x] Diagnosticar a interrupção da coleta eleitoral e da rotina incremental de verificação de Instagram.
+- [x] Corrigir a rotina programada e comprovar o avanço auditável dos registros pendentes sem criar associações presumidas.
+- [x] Determinar com evidência a causa da coleta oficial vazia que ficou em processamento.
+- [x] Comprovar em execução controlada que uma nova coleta oficial conclui com registros ou registra erro auditável.
+- [x] Registrar de forma auditável interrupções ou abortos após o registro inicial da coleta e antes da inserção de candidaturas.
+- [x] Cobrir em teste a persistência do diagnóstico quando a coleta é interrompida antes de gravar candidaturas.
+- [x] Documentar e comprovar que o diagnóstico de abortamento começa após o registro inicial da coleta e antes da inserção de candidaturas.
+- [x] Confirmar por leitura a documentação final do ponto de diagnóstico de abortamento.

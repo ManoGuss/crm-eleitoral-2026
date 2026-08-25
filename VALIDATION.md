@@ -60,3 +60,20 @@ O atalho de estrela agora está disponível nos cartões móveis e nas ações d
 Além disso, o teste de fluxo `ElectionCandidateProfile.flow.test.tsx` renderiza o perfil com dados inteiramente controlados, aciona o botão de adicionar aos favoritos, simula o estado favoritado, verifica a aparição do painel comercial e confirma o salvamento de status e observação. Nenhuma escrita foi realizada no banco durante essa prova. Após essa cobertura, `pnpm test` passou com 27 arquivos e 53 testes, seguidos de checagem de tipos e build de produção.
 
 O mesmo fluxo controlado aciona também a estrela de **remover dos favoritos** após o salvamento e confirma a chamada protegida com `favorite: false`. Assim, o ciclo de favoritar, editar e desfavoritar foi exercitado sem criar ou alterar registros persistentes de usuário.
+
+## Recuperação da coleta e verificação de Instagram
+
+| Área verificada | Resultado observado |
+|---|---|
+| Causa da interrupção | A tarefa anterior de Instagram ficou desativada após respostas `404` e `403`, impedindo novos lotes. |
+| Tarefa recuperada | Uma nova tarefa protegida foi vinculada à coleta `60001`, mantendo a tarefa anterior pausada para evitar duplicidade. |
+| Primeira execução | A rotina respondeu `200` e processou **64 candidaturas**, com **5 perfis declarados verificados** e **0 falhas** no lote. |
+| Estado auditável após o lote | **1.232** candidaturas consultadas, **19.021** pendentes, **77** Instagrams verificados e **1.155** não localizados após consulta. |
+| Interface de continuidade | A tela passa a priorizar a última base íntegra de 20.253 candidaturas, alerta sobre uma tentativa vazia interrompida e oferece ações explícitas para processar o próximo lote, ativar ou pausar a rotina. |
+| Regressão automatizada | `pnpm test` passou com **28 arquivos e 55 testes**, além de `pnpm check` e `pnpm build`. |
+
+### Coleta oficial controlada
+
+As coletas vazias `150001` e `150002` estavam em `em_processamento` sem registros nem relatório de erro, compatível com interrupção da requisição HTTP antes da etapa de persistência. Uma coleta anterior (`120001`) registrava falha de inserção de um lote grande no banco. A inserção foi reduzida de 250 para **50 candidaturas por lote**, os erros de inserção passaram a ser classificados como falha de processamento auditável e uma nova execução controlada (`180001`) foi concluída em **25/08/2026 02:46 UTC** com **20.264 candidaturas**, estado `processado/concluida`, sem relatório de erro e origem oficial em arquivo. A rotina de Instagram foi transferida para essa nova coleta e sua primeira execução retornou `200`, consultando 64 candidaturas, verificando 8 perfis declarados e sem falhas. A validação final passou com **29 arquivos e 58 testes**, além de `pnpm check` e `pnpm build`.
+
+Para evitar novas coletas vazias sem diagnóstico, a mutação de coleta agora observa o evento HTTP `aborted` **imediatamente após persistir o registro inicial da coleta e antes da primeira inserção de candidaturas**. Esse é o primeiro ponto em que há um identificador durável para registrar a falha. Se a requisição for abortada nesse intervalo, o sistema grava `sourceStatus/processStatus = falhou`, horário de processamento e o evento `requisicao_interrompida`, apenas quando a coleta continua vazia e em processamento. O teste de router comprova a ordem `registro inicial → diagnóstico persistido → inserção de candidaturas`; o teste de banco confirma a atualização protegida. Abortamentos anteriores à criação do registro não têm como ser associados a uma coleta inexistente. As coletas históricas `150001` e `150002` permanecem evidência de uma interrupção sem causa específica registrada. Em 25/08/2026, `pnpm test` passou com **30 arquivos e 61 testes**, além de `pnpm check` e `pnpm build`.

@@ -32,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getContactPreferenceForUser, getElectionCandidateProfileForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, listReviewersForUser, listReviewHistoryForUser, prepareCandidateContactForUser, reviewElectionCandidateForUser, setElectionCandidateFavoriteForUser, setInstagramVerificationTaskForUser, updateCandidateInteractionForUser, updateContactPreferenceForUser, updateElectionCandidateFavoriteForUser } from "../election-db";
+import { collectOfficial2026ForUser, getContactPreferenceForUser, getElectionCandidateProfileForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, listReviewersForUser, listReviewHistoryForUser, markElectionCollectionInterruptedForUser, prepareCandidateContactForUser, reviewElectionCandidateForUser, setElectionCandidateFavoriteForUser, setInstagramVerificationTaskForUser, updateCandidateInteractionForUser, updateContactPreferenceForUser, updateElectionCandidateFavoriteForUser, verifyInstagramChunkForCollection } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -357,7 +357,26 @@ export const crmRouter = router({
       if (!collection) throw new TRPCError({ code: "NOT_FOUND", message: "Coleta não encontrada." });
       return collection;
     }),
-    runOfficialCollection: protectedProcedure.mutation(({ ctx }) => collectOfficial2026ForUser(ctx.user.id)),
+    runOfficialCollection: protectedProcedure.mutation(async ({ ctx }) => {
+      let collectionId: number | null = null;
+      const markInterrupted = () => {
+        if (collectionId) void markElectionCollectionInterruptedForUser(ctx.user.id, collectionId);
+      };
+      ctx.req.once("aborted", markInterrupted);
+      try {
+        return await collectOfficial2026ForUser(ctx.user.id, id => {
+          collectionId = id;
+          if (ctx.req.aborted) markInterrupted();
+        });
+      } finally {
+        ctx.req.off("aborted", markInterrupted);
+      }
+    }),
+    runInstagramVerificationChunk: protectedProcedure.input(z.object({ collectionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const collection = await getElectionCollectionForUser(ctx.user.id, input.collectionId);
+      if (!collection) throw new TRPCError({ code: "NOT_FOUND", message: "Coleta não encontrada." });
+      return verifyInstagramChunkForCollection(input.collectionId, 64);
+    }),
     startInstagramVerification: protectedProcedure.input(z.object({ collectionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const collection = await getElectionCollectionForUser(ctx.user.id, input.collectionId);
       if (!collection) throw new TRPCError({ code: "NOT_FOUND", message: "Coleta não encontrada." });

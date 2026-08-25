@@ -1,7 +1,8 @@
 import { and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { electionCandidateFavorites, electionCandidateInteractions, electionCandidates, electionCollections, electionContactPreferences, electionInteractionEvents, electionReviewDecisions, users } from "../drizzle/schema";
 import type { CommercialMarker } from "../shared/commercial";
-import { loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
+import { candidateForStorage, loadOfficial2026Candidates, TSE_CANDIDATES_URL, TSE_SOCIAL_NETWORKS_URL } from "./election-collector";
+import { collectionFailureForAudit, collectionInterruptedAudit, ELECTION_INSERT_BATCH_SIZE } from "./election-collection-utils";
 import { buildManualReviewValues } from "./election-review-utils";
 import { buildPublicWhatsAppUrl, DEFAULT_WHATSAPP_TEMPLATE, renderWhatsAppTemplate } from "./election-contact-utils";
 import { getDb } from "./db";
@@ -279,7 +280,23 @@ export async function verifyInstagramChunkForCollection(collectionId: number, li
   return { collectionId, attempted: candidates.length, verifiedInRun, failedInRun, checked, pending, complete: pending === 0 };
 }
 
-export async function collectOfficial2026ForUser(userId: number) {
+export async function markElectionCollectionInterruptedForUser(userId: number, collectionId: number) {
+  const db = await requireDb();
+  const result = await db.update(electionCollections).set({
+    sourceStatus: "falhou",
+    processStatus: "falhou",
+    processedAt: new Date(),
+    errorReport: collectionInterruptedAudit(),
+  }).where(and(
+    eq(electionCollections.id, collectionId),
+    eq(electionCollections.userId, userId),
+    eq(electionCollections.processStatus, "em_processamento"),
+    eq(electionCollections.totalCandidates, 0),
+  ));
+  return result[0]?.affectedRows === 1;
+}
+
+export async function collectOfficial2026ForUser(userId: number, onCollectionCreated?: (collectionId: number) => void) {
   const db = await requireDb();
   const created = await db.insert(electionCollections).values({
     userId,
@@ -291,11 +308,12 @@ export async function collectOfficial2026ForUser(userId: number) {
     summary: { candidatesUrl: TSE_CANDIDATES_URL, socialNetworksUrl: TSE_SOCIAL_NETWORKS_URL, scope: ["Governador", "Vice-governador", "Senador", "1º Suplente", "2º Suplente", "Deputado Federal", "Deputado Estadual"] },
   });
   const collectionId = Number(created[0].insertId);
+  onCollectionCreated?.(collectionId);
   try {
     const { candidates, officialTotals, sourceUrl, sourceMode, notes } = await loadOfficial2026Candidates();
-    for (let start = 0; start < candidates.length; start += 250) {
-      const batch = candidates.slice(start, start + 250);
-      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidate, collectionId, userId })));
+    for (let start = 0; start < candidates.length; start += ELECTION_INSERT_BATCH_SIZE) {
+      const batch = candidates.slice(start, start + ELECTION_INSERT_BATCH_SIZE);
+      if (batch.length) await db.insert(electionCandidates).values(batch.map(candidate => ({ ...candidateForStorage(candidate), collectionId, userId })));
     }
     const verifiedInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Verificado").length;
     const probableInstagramCount = candidates.filter(candidate => candidate.instagramVerification === "Provável — requer revisão").length;
@@ -318,10 +336,10 @@ export async function collectOfficial2026ForUser(userId: number) {
       errorReport: coverageIssue ? [{ stage: "conferencia_cobertura_uf", reason: `A fonte retornou ${coveredUfs.length} UF(s): ${coveredUfs.join(", ")}. A coleta não foi marcada como completa.` }] : null,
     }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "Falha desconhecida ao acessar a fonte oficial.";
+    const reason = collectionFailureForAudit(error);
     await db.update(electionCollections).set({
-      sourceStatus: "indisponivel",
-      processStatus: "incompleta",
+      sourceStatus: "falhou",
+      processStatus: "falhou",
       processedAt: new Date(),
       errorReport: [{ stage: "download_fonte_oficial", reason }],
     }).where(and(eq(electionCollections.id, collectionId), eq(electionCollections.userId, userId)));

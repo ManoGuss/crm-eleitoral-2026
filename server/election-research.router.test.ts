@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   updateContactPreferenceForUser: vi.fn(),
   prepareCandidateContactForUser: vi.fn(),
   updateCandidateInteractionForUser: vi.fn(),
+  getElectionCollectionForUser: vi.fn(),
+  verifyInstagramChunkForCollection: vi.fn(),
+  collectOfficial2026ForUser: vi.fn(),
+  markElectionCollectionInterruptedForUser: vi.fn(),
 }));
 
 vi.mock("./election-db", async importOriginal => {
@@ -44,5 +48,45 @@ describe("crm.electionResearch API", () => {
     expect(mocks.updateContactPreferenceForUser).toHaveBeenCalledWith(7, "Oi {nome}");
     expect(mocks.prepareCandidateContactForUser).toHaveBeenCalledWith(7, 31, "whatsapp");
     expect(mocks.updateCandidateInteractionForUser).toHaveBeenCalledWith(7, 88, expect.objectContaining({ outcome: "respondida" }));
+  });
+
+  it("processa um lote de Instagram somente após confirmar que a coleta pertence à sessão atual", async () => {
+    mocks.getElectionCollectionForUser.mockResolvedValue({ collection: { id: 60001 } });
+    mocks.verifyInstagramChunkForCollection.mockResolvedValue({ collectionId: 60001, attempted: 64, verifiedInRun: 5, failedInRun: 0, checked: 1232, pending: 19021, complete: false });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.crm.electionResearch.runInstagramVerificationChunk({ collectionId: 60001 })).resolves.toMatchObject({ attempted: 64, pending: 19021 });
+    expect(mocks.getElectionCollectionForUser).toHaveBeenCalledWith(7, 60001);
+    expect(mocks.verifyInstagramChunkForCollection).toHaveBeenCalledWith(60001, 64);
+  });
+
+  it("marca uma coleta recém-criada como falha auditável quando a requisição é abortada", async () => {
+    let onAbort: (() => void) | undefined;
+    const steps: string[] = [];
+    const abortableCtx: any = {
+      ...ctx,
+      req: {
+        headers: {},
+        aborted: false,
+        once: vi.fn((_event: string, callback: () => void) => { onAbort = callback; }),
+        off: vi.fn(),
+      },
+    };
+    mocks.collectOfficial2026ForUser.mockImplementation(async (_userId: number, onCollectionCreated: (id: number) => void) => {
+      steps.push("registro_inicial");
+      onCollectionCreated(123);
+      abortableCtx.req.aborted = true;
+      onAbort?.();
+      steps.push("antes_da_insercao_de_candidaturas");
+      return { collection: { id: 123 } };
+    });
+    mocks.markElectionCollectionInterruptedForUser.mockImplementation(() => {
+      steps.push("diagnostico_persistido");
+      return Promise.resolve(true);
+    });
+    const caller = appRouter.createCaller(abortableCtx);
+    await caller.crm.electionResearch.runOfficialCollection();
+    expect(mocks.markElectionCollectionInterruptedForUser).toHaveBeenCalledWith(7, 123);
+    expect(steps).toEqual(["registro_inicial", "diagnostico_persistido", "antes_da_insercao_de_candidaturas"]);
+    expect(abortableCtx.req.off).toHaveBeenCalledWith("aborted", expect.any(Function));
   });
 });
