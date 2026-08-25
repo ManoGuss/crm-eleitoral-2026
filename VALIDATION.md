@@ -52,3 +52,11 @@ Na validação do painel de coleta, a sessão do navegador não estava autentica
 | Interface móvel | As rotas `/revisar-perfis` e `/candidaturas/1` mantiveram hierarquia, controles e conteúdo sem corte horizontal em 375 px. |
 
 Em 25/08/2026, foram executados com êxito `pnpm test` (25 arquivos, 51 testes), `pnpm check` e `pnpm build`. A validação visual foi feita sem acionar canais externos; os controles de contato permanecem restritos a URLs públicas HTTPS autorizadas e não realizam disparo automático.
+
+## Favoritos e acompanhamento comercial
+
+O atalho de estrela agora está disponível nos cartões móveis e nas ações da tabela da Base Eleitoral. Ao favoritar, o perfil passa a disponibilizar o painel de acompanhamento comercial com status, último contato, próximo follow-up e observação privada por usuário. A validação visual confirmou a presença e a responsividade desses controles em desktop e 375 px. Um teste de componente confirma que editar os quatro campos produz o payload correto de salvamento, enquanto o teste de router comprova o escopo da sessão e a conversão de status, datas e observação sem escrever dados de usuário. Em 25/08/2026, `pnpm test` passou com 26 arquivos e 52 testes, além de `pnpm check` e `pnpm build`.
+
+Além disso, o teste de fluxo `ElectionCandidateProfile.flow.test.tsx` renderiza o perfil com dados inteiramente controlados, aciona o botão de adicionar aos favoritos, simula o estado favoritado, verifica a aparição do painel comercial e confirma o salvamento de status e observação. Nenhuma escrita foi realizada no banco durante essa prova. Após essa cobertura, `pnpm test` passou com 27 arquivos e 53 testes, seguidos de checagem de tipos e build de produção.
+
+O mesmo fluxo controlado aciona também a estrela de **remover dos favoritos** após o salvamento e confirma a chamada protegida com `favorite: false`. Assim, o ciclo de favoritar, editar e desfavoritar foi exercitado sem criar ou alterar registros persistentes de usuário.

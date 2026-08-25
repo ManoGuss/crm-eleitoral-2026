@@ -43,8 +43,8 @@ describe("favoritos eleitorais", () => {
   it("salva e atualiza o favorito apenas para a conta autenticada", async () => {
     const caller = appRouter.createCaller(authenticatedContext());
     await caller.crm.electionResearch.setFavorite({ candidateId: 77, favorite: true });
-    await caller.crm.electionResearch.updateFavorite({ candidateId: 77, status: "Abordado", lastContactAt: 1_770_000_000_000 });
+    await caller.crm.electionResearch.updateFavorite({ candidateId: 77, status: "Abordado", lastContactAt: 1_770_000_000_000, followUpAt: 1_770_172_800_000, note: "Retornar com proposta." });
     expect(electionMocks.setElectionCandidateFavoriteForUser).toHaveBeenCalledWith(29, 77, true);
-    expect(electionMocks.updateElectionCandidateFavoriteForUser).toHaveBeenCalledWith(29, 77, expect.objectContaining({ status: "Abordado", lastContactAt: new Date(1_770_000_000_000) }));
+    expect(electionMocks.updateElectionCandidateFavoriteForUser).toHaveBeenCalledWith(29, 77, expect.objectContaining({ status: "Abordado", lastContactAt: new Date(1_770_000_000_000), followUpAt: new Date(1_770_172_800_000), note: "Retornar com proposta." }));
   });
 });

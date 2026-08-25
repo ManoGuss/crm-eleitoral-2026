@@ -168,15 +168,16 @@ export async function getElectionCandidateProfileForUser(userId: number, candida
   const db = dbOverride ?? await requireDb();
   const candidate = (await db.select().from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];
   if (!candidate) return null;
-  const [reviews, interactions, interactionEvents] = await Promise.all([
+  const [reviews, interactions, interactionEvents, favoriteRows] = await Promise.all([
     db.select({ id: electionReviewDecisions.id, decision: electionReviewDecisions.decision, note: electionReviewDecisions.note, createdAt: electionReviewDecisions.createdAt, reviewerName: users.name, reviewerEmail: users.email }).from(electionReviewDecisions).leftJoin(users, eq(electionReviewDecisions.userId, users.id)).where(and(eq(electionReviewDecisions.candidateId, candidateId), eq(electionReviewDecisions.userId, userId))).orderBy(desc(electionReviewDecisions.createdAt)),
     db.select().from(electionCandidateInteractions).where(and(eq(electionCandidateInteractions.candidateId, candidateId), eq(electionCandidateInteractions.userId, userId))).orderBy(desc(electionCandidateInteractions.createdAt)),
     db.select().from(electionInteractionEvents).where(eq(electionInteractionEvents.userId, userId)).orderBy(desc(electionInteractionEvents.createdAt)),
+    db.select().from(electionCandidateFavorites).where(and(eq(electionCandidateFavorites.candidateId, candidateId), eq(electionCandidateFavorites.userId, userId))).limit(1),
   ]);
   const typedInteractions = interactions as Array<{ id: number; [key: string]: unknown }>;
   const typedEvents = interactionEvents as Array<{ interactionId: number; [key: string]: unknown }>;
   const interactionIds = new Set(typedInteractions.map(interaction => interaction.id));
-  return { candidate, reviews, interactions: typedInteractions.map(interaction => ({ ...interaction, events: typedEvents.filter(event => interactionIds.has(event.interactionId) && event.interactionId === interaction.id) })) };
+  return { candidate, favorite: favoriteRows[0] ?? null, reviews, interactions: typedInteractions.map(interaction => ({ ...interaction, events: typedEvents.filter(event => interactionIds.has(event.interactionId) && event.interactionId === interaction.id) })) };
 }
 
 export async function getContactPreferenceForUser(userId: number, dbOverride?: any) {

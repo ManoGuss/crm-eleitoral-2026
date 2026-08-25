@@ -35,3 +35,11 @@
 - [x] Fazer todos os atalhos de WhatsApp usarem a mensagem preenchida e o registro auditável de interação.
 - [x] Cobrir a leitura de eventos imutáveis no perfil da candidatura e a integração do histórico filtrado em testes automatizados.
 - [x] Consolidar a validação controlada de ponta a ponta dos fluxos de filtro, modelo de mensagem, contato e linha do tempo sem enviar mensagens externas.
+- [x] Expor a ação de favoritar e desfavoritar diretamente na Base Eleitoral.
+- [x] Permitir editar no perfil favorito o status comercial, último contato, próximo follow-up e observação.
+- [x] Validar os controles de favorito e acompanhamento em testes e interfaces responsivas.
+- [x] Comprovar em teste automatizado a edição de favorito e acompanhamento comercial no perfil.
+- [x] Executar validação funcional controlada do favorito e salvamento do acompanhamento, registrando evidências sem alterar dados permanentes de usuário.
+- [x] Cobrir em teste de interface o clique de favoritar e desfavoritar no perfil da candidatura.
+- [x] Comprovar em ambiente controlado a sequência favorito ativo, painel disponível e salvamento do acompanhamento sem persistir dados reais.
+- [x] Cobrir em teste de interface a remoção de favorito no perfil da candidatura.
