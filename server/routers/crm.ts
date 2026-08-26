@@ -32,7 +32,7 @@ import {
   updateImportForUser,
   updateLeadForUser,
 } from "../db";
-import { collectOfficial2026ForUser, getContactPreferenceForUser, getElectionCandidateProfileForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, listReviewersForUser, listReviewHistoryForUser, markElectionCollectionInterruptedForUser, prepareCandidateContactForUser, reviewElectionCandidateForUser, setElectionCandidateFavoriteForUser, setInstagramVerificationTaskForUser, updateCandidateInteractionForUser, updateContactPreferenceForUser, updateElectionCandidateFavoriteForUser, verifyInstagramChunkForCollection } from "../election-db";
+import { collectOfficial2026ForUser, getContactPreferenceForUser, getElectionCandidateProfileForUser, getElectionCollectionForUser, listElectionCandidatesForUser, listElectionCollectionsForUser, listFavoriteElectionCandidatesForUser, listReviewersForUser, listReviewHistoryForUser, markElectionCollectionInterruptedForUser, prepareCandidateContactForUser, reviewElectionCandidateForUser, setElectionCandidateFavoriteForUser, setInstagramVerificationTaskForUser, updateCandidateInteractionForUser, updateContactPreferenceForUser, updateElectionCandidateFavoriteForUser, verifyInstagramChunkForCollection } from "../election-db";
 import {
   CRM_STATUSES,
   dedupeKeyForLead,
@@ -465,6 +465,12 @@ export const crmRouter = router({
       commercialMarker: z.enum(["sem_contato", "em_conversa", "aguardando_retorno", "negociacao", "follow_up", "proposta", "fechado", "perdido"]).optional(),
       query: z.string().max(200).optional(),
     })).query(({ ctx, input }) => listElectionCandidatesForUser(ctx.user.id, input)),
+    listFavorites: protectedProcedure.input(z.object({
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(24),
+      status: statusSchema.optional(),
+      query: z.string().max(200).optional(),
+    })).query(({ ctx, input }) => listFavoriteElectionCandidatesForUser(ctx.user.id, input)),
     setFavorite: protectedProcedure.input(z.object({ candidateId: z.number().int().positive(), favorite: z.boolean() })).mutation(async ({ ctx, input }) => {
       const favorite = await setElectionCandidateFavoriteForUser(ctx.user.id, input.candidateId, input.favorite);
       if (input.favorite && !favorite) throw new TRPCError({ code: "NOT_FOUND", message: "Candidatura não encontrada." });

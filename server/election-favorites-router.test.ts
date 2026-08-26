@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 const electionMocks = vi.hoisted(() => ({
   listElectionCandidatesForUser: vi.fn(),
+  listFavoriteElectionCandidatesForUser: vi.fn(),
   setElectionCandidateFavoriteForUser: vi.fn(),
   updateElectionCandidateFavoriteForUser: vi.fn(),
 }));
@@ -12,6 +13,7 @@ vi.mock("./election-db", async () => {
   return {
     ...actual,
     listElectionCandidatesForUser: electionMocks.listElectionCandidatesForUser,
+    listFavoriteElectionCandidatesForUser: electionMocks.listFavoriteElectionCandidatesForUser,
     setElectionCandidateFavoriteForUser: electionMocks.setElectionCandidateFavoriteForUser,
     updateElectionCandidateFavoriteForUser: electionMocks.updateElectionCandidateFavoriteForUser,
   };
@@ -30,6 +32,7 @@ function authenticatedContext(): TrpcContext {
 describe("favoritos eleitorais", () => {
   beforeEach(() => {
     electionMocks.listElectionCandidatesForUser.mockReset().mockResolvedValue({ items: [], total: 0 });
+    electionMocks.listFavoriteElectionCandidatesForUser.mockReset().mockResolvedValue({ items: [], total: 0 });
     electionMocks.setElectionCandidateFavoriteForUser.mockReset().mockResolvedValue({ id: 3, candidateId: 77, userId: 29, status: "Novo" });
     electionMocks.updateElectionCandidateFavoriteForUser.mockReset().mockResolvedValue({ id: 3, candidateId: 77, userId: 29, status: "Abordado" });
   });
@@ -46,5 +49,11 @@ describe("favoritos eleitorais", () => {
     await caller.crm.electionResearch.updateFavorite({ candidateId: 77, status: "Abordado", lastContactAt: 1_770_000_000_000, followUpAt: 1_770_172_800_000, note: "Retornar com proposta." });
     expect(electionMocks.setElectionCandidateFavoriteForUser).toHaveBeenCalledWith(29, 77, true);
     expect(electionMocks.updateElectionCandidateFavoriteForUser).toHaveBeenCalledWith(29, 77, expect.objectContaining({ status: "Abordado", lastContactAt: new Date(1_770_000_000_000), followUpAt: new Date(1_770_172_800_000), note: "Retornar com proposta." }));
+  });
+
+  it("lista os favoritos em uma consulta exclusiva e isolada da conta autenticada", async () => {
+    const caller = appRouter.createCaller(authenticatedContext());
+    await caller.crm.electionResearch.listFavorites({ page: 2, pageSize: 12, status: "Follow-up", query: "Ana" });
+    expect(electionMocks.listFavoriteElectionCandidatesForUser).toHaveBeenCalledWith(29, { page: 2, pageSize: 12, status: "Follow-up", query: "Ana" });
   });
 });

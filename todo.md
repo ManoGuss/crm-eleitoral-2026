@@ -51,3 +51,7 @@
 - [x] Cobrir em teste a persistência do diagnóstico quando a coleta é interrompida antes de gravar candidaturas.
 - [x] Documentar e comprovar que o diagnóstico de abortamento começa após o registro inicial da coleta e antes da inserção de candidaturas.
 - [x] Confirmar por leitura a documentação final do ponto de diagnóstico de abortamento.
+- [x] Criar uma seção de navegação dedicada para listar candidaturas favoritas.
+- [x] Exibir status, follow-up e atalho ao perfil de cada candidatura favorita.
+- [x] Validar a listagem de favoritos em estados preenchido, vazio e em tela móvel.
+- [x] Comprovar em teste ou captura controlada o estado vazio da seção de favoritos.

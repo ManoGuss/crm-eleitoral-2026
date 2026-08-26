@@ -105,6 +105,23 @@ export async function listElectionCandidatesForUser(userId: number, input: { col
   return { items: rows.map(row => ({ ...row.candidate, favorite: row.favorite })), total: totalResult[0]?.total ?? 0 };
 }
 
+export async function listFavoriteElectionCandidatesForUser(userId: number, input: { page: number; pageSize: number; status?: typeof electionCandidateFavorites.status.enumValues[number]; query?: string }) {
+  const db = await requireDb();
+  const conditions = [eq(electionCandidateFavorites.userId, userId)];
+  if (input.status) conditions.push(eq(electionCandidateFavorites.status, input.status));
+  if (input.query?.trim()) {
+    const term = `%${input.query.trim()}%`;
+    conditions.push(sql`(${electionCandidates.candidateName} like ${term} OR ${electionCandidates.ballotName} like ${term} OR ${electionCandidates.cargo} like ${term} OR ${electionCandidates.party} like ${term})`);
+  }
+  const where = and(...conditions);
+  const offset = (input.page - 1) * input.pageSize;
+  const [rows, totalResult] = await Promise.all([
+    db.select({ candidate: electionCandidates, favorite: electionCandidateFavorites }).from(electionCandidateFavorites).innerJoin(electionCandidates, eq(electionCandidateFavorites.candidateId, electionCandidates.id)).where(where).orderBy(desc(electionCandidateFavorites.followUpAt), desc(electionCandidateFavorites.updatedAt), electionCandidates.candidateName).limit(input.pageSize).offset(offset),
+    db.select({ total: count() }).from(electionCandidateFavorites).innerJoin(electionCandidates, eq(electionCandidateFavorites.candidateId, electionCandidates.id)).where(where),
+  ]);
+  return { items: rows.map(row => ({ ...row.candidate, favorite: row.favorite })), total: totalResult[0]?.total ?? 0 };
+}
+
 export async function setElectionCandidateFavoriteForUser(userId: number, candidateId: number, favorite: boolean) {
   const db = await requireDb();
   const candidate = (await db.select({ id: electionCandidates.id }).from(electionCandidates).where(and(eq(electionCandidates.id, candidateId), eq(electionCandidates.userId, userId))).limit(1))[0];

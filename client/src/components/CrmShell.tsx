@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, Menu, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
+import { BarChart3, Database, FileSpreadsheet, Landmark, LayoutDashboard, Menu, Plus, Search, ShieldCheck, Star, Users, X } from "lucide-react";
 import React, { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -10,6 +10,7 @@ const navigation = [
   { label: "Importações", path: "/importacoes", icon: FileSpreadsheet },
   { label: "Coleta eleitoral", path: "/coleta-eleitoral", icon: Landmark },
   { label: "Base eleitoral", path: "/base-eleitoral", icon: Database },
+  { label: "Favoritos", path: "/favoritos", icon: Star },
   { label: "Revisar perfis", path: "/revisar-perfis", icon: ShieldCheck },
 ];
 
